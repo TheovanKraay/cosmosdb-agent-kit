@@ -48,6 +48,9 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
    - 4.4 [Use Direct Connection Mode for Production](#44-use-direct-connection-mode-for-production)
    - 4.5 [Configure Preferred Regions for Availability](#45-configure-preferred-regions-for-availability)
    - 4.6 [Log Diagnostics for Troubleshooting](#46-log-diagnostics-for-troubleshooting)
+   - 4.7 [Configure Availability Strategy (Hedging)](#47-configure-availability-strategy-hedging)
+   - 4.8 [Configure Partition-Level Circuit Breaker](#48-configure-partition-level-circuit-breaker)
+   - 4.9 [Configure Excluded Regions for Dynamic Failover](#49-configure-excluded-regions-for-dynamic-failover)
 5. [Indexing Strategies](#5-indexing-strategies) — **MEDIUM-HIGH**
    - 5.1 [Exclude Unused Index Paths](#51-exclude-unused-index-paths)
    - 5.2 [Use Composite Indexes for ORDER BY](#52-use-composite-indexes-for-order-by)
@@ -66,6 +69,7 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
    - 7.3 [Implement Conflict Resolution](#73-implement-conflict-resolution)
    - 7.4 [Configure Automatic Failover](#74-configure-automatic-failover)
    - 7.5 [Add Read Regions Near Users](#75-add-read-regions-near-users)
+   - 7.6 [Enable Zone Redundancy](#76-enable-zone-redundancy)
 8. [Monitoring & Diagnostics](#8-monitoring--diagnostics) — **LOW-MEDIUM**
    - 8.1 [Track RU Consumption](#81-track-ru-consumption)
    - 8.2 [Monitor P99 Latency](#82-monitor-p99-latency)
@@ -426,6 +430,42 @@ ApplicationPreferredRegions = new List<string> { Regions.WestUS2, Regions.EastUS
 
 Capture diagnostics for slow or failed operations.
 
+### 4.7 Configure Availability Strategy (Hedging)
+
+**Impact: HIGH (reduces tail latency 90%+, improves availability)**
+
+Send parallel requests to secondary regions when primary is slow.
+
+```csharp
+// .NET SDK
+.WithAvailabilityStrategy(
+    AvailabilityStrategy.CrossRegionHedgingStrategy(
+        threshold: TimeSpan.FromMilliseconds(500),
+        thresholdStep: TimeSpan.FromMilliseconds(100)))
+```
+
+### 4.8 Configure Partition-Level Circuit Breaker
+
+**Impact: HIGH (prevents cascading failures)**
+
+Automatically route away from unhealthy partitions.
+
+```bash
+# Environment variables (.NET/Python)
+AZURE_COSMOS_CIRCUIT_BREAKER_ENABLED=true
+AZURE_COSMOS_PPCB_CONSECUTIVE_FAILURE_COUNT_FOR_WRITES=5
+```
+
+### 4.9 Configure Excluded Regions for Dynamic Failover
+
+**Impact: MEDIUM (enables dynamic routing without restart)**
+
+Exclude regions per-request for fine-grained control.
+
+```csharp
+new ItemRequestOptions { ExcludeRegions = new List<string> { "East US" } }
+```
+
 ---
 
 ## 5. Indexing Strategies
@@ -556,6 +596,19 @@ Configure Last Writer Wins or custom resolution.
 **Impact: MEDIUM (reduces read latency)**
 
 Add replicas in user-heavy geographic regions.
+
+### 7.6 Enable Zone Redundancy
+
+**Impact: HIGH (increases SLA to 99.995%)**
+
+Distribute replicas across availability zones within a region.
+
+```json
+{ "isZoneRedundant": true }
+```
+
+- 25% throughput premium (waived for multi-region writes and autoscale)
+- Protects against AZ failures with zero data loss
 
 ---
 
