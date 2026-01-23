@@ -21,8 +21,12 @@
   },
   "files": [
     "skills/**/*",
-    "scripts/postinstall.js"
+    "scripts/postinstall.js",
+    "bin/cli.js"
   ],
+  "bin": {
+    "cosmosdb-agent-kit": "bin/cli.js"
+  },
   "scripts": {
     "build": "node scripts/compile.js",
     "validate": "node scripts/validate.js",
