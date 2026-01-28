@@ -22,6 +22,26 @@ Each improvement entry should include:
 
 _Improvements pending next release_
 
+#### 2026-01-28: Iteration 002 - Skills Successfully Applied (ecommerce-order-api)
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: 002-dotnet (WITH skills)
+- **Result**: ✅ **SUCCESS** - All tests passed, including the critical enum serialization test
+- **Improvement Validated**: Rule 4.10 (enum serialization) was applied correctly, fixing the bug from iteration-001
+- **Score**: 9.1/10 (vs 6/10 in baseline iteration-001)
+- **Key Rules Applied**:
+  - 4.10: JsonStringEnumConverter configured ✅
+  - 4.1: Singleton CosmosClient ✅
+  - 4.4: Direct connection mode ✅
+  - 1.1: Embedded OrderItems ✅
+  - 2.1/2.4: High-cardinality partition key (customerId) ✅
+  - 3.1/3.2: Single-partition queries with projections ✅
+  - 5.2: Composite indexes ✅
+- **Observations**: 
+  - The skill kit successfully prevented the enum serialization bug
+  - Agent applied 18+ rules from the skill kit
+  - Cross-partition queries (status/date) are unavoidable given partition key choice - could add guidance for Change Feed patterns
+
 #### 2026-01-27: Testing Framework - Skills Must Be Loaded First
 
 - **Scenario**: ecommerce-order-api

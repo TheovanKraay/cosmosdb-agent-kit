@@ -4,15 +4,60 @@ This framework provides a structured approach for iteratively testing and improv
 
 ---
 
-## 🤖 AGENT QUICK START
+## 🚀 QUICK START: Run a Test Iteration
 
-**If you're an AI agent and want to run a test iteration, follow these steps:**
+**Copy and paste one of these prompts into a NEW chat session to run a test iteration.**
 
-### ⚠️ CRITICAL: Install Skills FIRST
+### E-Commerce Order API (.NET) - Next iteration
+```
+I want to run a test iteration for the Cosmos DB Agent Kit.
+
+FIRST: Read the file `skills/cosmosdb-best-practices/AGENTS.md` completely - this contains 
+all the Cosmos DB best practices you must follow.
+
+THEN: Read `testing/scenarios/ecommerce-order-api/SCENARIO.md` for the requirements.
+
+THEN: Check `testing/scenarios/ecommerce-order-api/iterations/` to find the next iteration number.
+
+Create a new iteration folder (iteration-002-dotnet or next available) and build the 
+application following the .NET prompt in SCENARIO.md. Apply ALL the Cosmos DB best 
+practices from AGENTS.md throughout the implementation.
+
+After building, run the app and test all endpoints. Document findings in ITERATION.md.
+```
+
+### E-Commerce Order API (Java)
+```
+I want to run a test iteration for the Cosmos DB Agent Kit.
+
+FIRST: Read `skills/cosmosdb-best-practices/AGENTS.md` completely for Cosmos DB best practices.
+THEN: Read `testing/scenarios/ecommerce-order-api/SCENARIO.md` for requirements.
+THEN: Check iterations folder for next number.
+
+Create iteration-XXX-java folder and build using the Java prompt. Apply ALL best practices.
+Run the app, test endpoints, document findings in ITERATION.md.
+```
+
+### Other Scenarios
+Replace `ecommerce-order-api` with:
+- `iot-device-telemetry` - IoT time-series data
+- `gaming-leaderboard` - Real-time leaderboards  
+- `ai-chat-rag` - AI chat with vector search
+- `multitenant-saas` - Multi-tenant SaaS app
+
+And choose language: `dotnet`, `java`, `python`, `nodejs`, `go`, or `rust`
+
+---
+
+## 🤖 AGENT INSTRUCTIONS (Detailed)
+
+**If you're an AI agent running a test iteration, follow these steps carefully:**
+
+### ⚠️ CRITICAL: Load Skills FIRST
 
 **Before building any application, you MUST load the Cosmos DB skills into your context.**
 
-#### Option A: Read the AGENTS.md file directly
+#### Option A: Read the AGENTS.md file directly (RECOMMENDED)
 ```
 Read the file: skills/cosmosdb-best-practices/AGENTS.md
 ```
