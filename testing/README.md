@@ -112,7 +112,12 @@ If the agent mentions "Direct mode" and "singleton client", the skills are loade
 
 8. **Document findings** in `ITERATION.md` inside the iteration folder
 
-9. **Clean up** - remove bin/obj, zip source code, delete source files (keep only ITERATION.md + source-code.zip)
+9. **Clean up the iteration folder** ⚠️ IMPORTANT:
+   - Create `source-code.zip` containing ONLY source files (*.cs, *.java, *.py, etc. - NO bin/, obj/, target/, node_modules/, or DLL files)
+   - **DELETE all source code files and folders after zipping**
+   - **Final iteration folder should contain ONLY 2 files:**
+     - `ITERATION.md` (documentation)
+     - `source-code.zip` (source archive)
 
 ### Adding a New Scenario
 
@@ -197,17 +202,21 @@ testing/
 └───────────────────────────────┬─────────────────────────────────┘
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  6. FEEDBACK LOOP: Review and propose new rules                │
-│     • See "Continuous Improvement" section below               │
-│     • Create new rules for patterns/issues discovered          │
-│     • Update IMPROVEMENTS-LOG.md                               │
+│  6. ⚠️ CREATE NEW RULES (if gaps found)                        │
+│     • If you discovered missing guidance, CREATE the rule NOW │
+│     • Add rule to skills/cosmosdb-best-practices/rules/        │
+│     • Run `npm run build` to regenerate AGENTS.md              │
+│     • Update IMPROVEMENTS-LOG.md with new rule details         │
+│     • See "Continuous Improvement" section for details         │
 └───────────────────────────────┬─────────────────────────────────┘
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  7. Clean up iteration folder                                  │
-│     • Delete bin/, obj/, node_modules/, etc.                   │
-│     • Zip all source files to source-code.zip                  │
-│     • Delete source files (keep only ITERATION.md + zip)       │
+│  7. Clean up iteration folder ⚠️ CRITICAL                      │
+│     • Zip ONLY source files: *.cs, *.java, *.py, etc.         │
+│     • DO NOT include: bin/, obj/, target/, node_modules/,     │
+│       DLLs, .class files, or any build artifacts              │
+│     • DELETE all source code after creating source-code.zip   │
+│     • FINAL STATE: Only ITERATION.md + source-code.zip remain │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -215,21 +224,40 @@ testing/
 
 ## 🔄 Continuous Improvement: The Feedback Loop
 
-**After each iteration, review the lessons learned and propose new rules!**
+**⚠️ CRITICAL: Create new rules DURING the iteration, not after!**
 
-This is a critical part of the testing framework. The goal is to continuously improve the skill kit based on real-world issues encountered during development.
+When you discover missing guidance or encounter issues that aren't covered by existing rules, **CREATE THE NEW RULE IMMEDIATELY** as part of your iteration work. This ensures the skill kit is continuously improved and the new rule is available for future iterations.
 
-### Step 1: Review Iteration Results
+### When to Create a New Rule (DO THIS DURING STEP 6)
 
-After completing an iteration, analyze the `ITERATION.md` for:
+Create a new rule if you encounter ANY of these situations:
 
-1. **Bugs encountered** - Were there patterns that caused issues?
-2. **Workarounds discovered** - Did you find solutions not documented in the rules?
-3. **SDK-specific quirks** - Did the SDK behave unexpectedly?
-4. **Configuration challenges** - Were there setup issues (emulator, SSL, env vars)?
-5. **Missing guidance** - What questions came up that the rules didn't answer?
+1. **Build failures** due to missing configuration guidance
+2. **Runtime errors** that could have been prevented with documentation
+3. **SDK-specific quirks** not covered in existing rules
+4. **Framework version requirements** (Java, Spring Boot, .NET, etc.)
+5. **Workarounds discovered** through trial and error
+6. **Performance issues** solved by specific patterns
+7. **Configuration challenges** (emulator, SSL, environment setup)
 
-### Step 2: Check Existing Rules
+**Rule of thumb**: If you had to search Stack Overflow or official docs to solve it, **create a rule for it**.
+
+### Step-by-Step: Creating a New Rule During Your Iteration
+
+### Step-by-Step: Creating a New Rule During Your Iteration
+
+#### 1. Identify the Gap
+
+As you work through the iteration, note when you encounter:
+- Bugs encountered - Were there patterns that caused issues?
+- Workarounds discovered - Did you find solutions not documented in the rules?
+- SDK-specific quirks - Did the SDK behave unexpectedly?
+- Configuration challenges - Were there setup issues (emulator, SSL, env vars)?
+- Missing guidance - What questions came up that the rules didn't answer?
+
+#### 2. Check Existing Rules
+
+#### 2. Check Existing Rules
 
 Before creating a new rule, verify it doesn't already exist:
 
@@ -246,9 +274,11 @@ skills/cosmosdb-best-practices/rules/
 └── pattern-*.md     # Design patterns
 ```
 
-### Step 3: Propose New Rules
+Use grep/search to check: `grep -r "Spring Boot" skills/cosmosdb-best-practices/rules/`
 
-If you identify a gap, create a new rule following this template:
+#### 3. Create the New Rule File
+
+If you identify a gap, **create a new rule file immediately** following this template:
 
 ```markdown
 ---
@@ -279,7 +309,9 @@ Brief description of the problem this rule addresses.
 Reference: [Link to official docs](url)
 ```
 
-### Step 4: Categories for New Rules
+**Example filename**: `skills/cosmosdb-best-practices/rules/sdk-java-spring-boot-versions.md`
+
+#### 4. Choose the Right Category/Prefix
 
 | Prefix | Category | When to Use |
 |--------|----------|-------------|
@@ -293,35 +325,64 @@ Reference: [Link to official docs](url)
 | `monitoring-` | Monitoring & Diagnostics | Logging, metrics, alerts |
 | `pattern-` | Design Patterns | Architecture patterns (e.g., Change Feed) |
 
-### Step 5: Update IMPROVEMENTS-LOG.md
+#### 5. Regenerate AGENTS.md
 
-After creating new rules, log them:
-
-```markdown
-## 2026-01-28 - Iteration 003 (Java)
-
-### New Rules Created
-- `sdk-emulator-ssl.md` - SSL certificate configuration for Java SDK with emulator
-- `sdk-java-content-response.md` - contentResponseOnWriteEnabled requirement
-
-### Lessons Learned
-- Java SDK requires Gateway mode for emulator (Direct mode fails)
-- createItem returns null unless contentResponseOnWriteEnabled is set
-```
-
-### Step 6: Regenerate AGENTS.md
-
-After adding rules, rebuild the compiled AGENTS.md:
+**⚠️ CRITICAL**: After creating the new rule file, you MUST regenerate AGENTS.md:
 
 ```bash
+cd c:\cosmos\gen-ai\skills\cosmosdb-agent-kit
 npm run build
-# or
-node scripts/compile.js
 ```
 
-This ensures the new rules are included when agents load the skills.
+This compiles all individual rule files into the master `AGENTS.md` file that agents load.
 
-### Examples of Rules Added from Iterations
+#### 6. Update IMPROVEMENTS-LOG.md
+
+#### 6. Update IMPROVEMENTS-LOG.md
+
+Document the new rule in `testing/IMPROVEMENTS-LOG.md`:
+
+```markdown
+## 2026-01-29 - Iteration 002 (Java)
+
+### New Rules Created
+- `sdk-java-spring-boot-versions.md` - **CRITICAL**: Spring Boot version requirements
+  - Problem: Spring Boot 3.x requires Java 17+, build fails with Java 11
+  - Impact: Prevents immediate build failures for all Java developers
+  
+### Lessons Learned
+- Framework version compatibility is foundational - must be documented
+```
+
+#### 7. Update Your ITERATION.md
+
+Reference the new rule you created in your iteration documentation:
+
+```markdown
+**Proposed Skill Improvements**:
+
+1. ✅ **CREATED: `sdk-java-spring-boot-versions.md`** (CRITICAL)
+   - Created during iteration to address build failure
+   - Documents Spring Boot 3.x → Java 17+ requirement
+   - Prevents similar failures in future iterations
+```
+
+### Complete Example: iteration-002-java
+
+This iteration discovered that Spring Boot 3.2.1 requires Java 17+, causing build failures. The agent:
+
+1. **Identified the gap**: Build failed with "wrong version 61.0, should be 55.0"
+2. **Checked existing rules**: No rule covered Java/Spring Boot version requirements
+3. **Created the rule**: `sdk-java-spring-boot-versions.md` with compatibility matrix
+4. **Regenerated AGENTS.md**: Ran `npm run build` to compile the new rule
+5. **Updated IMPROVEMENTS-LOG.md**: Documented the new CRITICAL rule
+6. **Updated ITERATION.md**: Marked the rule as ✅ CREATED during iteration
+
+**Result**: Future Java iterations will have this guidance available immediately, preventing the same build failure.
+
+---
+
+## 📊 Step 7: Review After Iteration (Summary Only)
 
 | Iteration | Issue Found | Rule Created |
 |-----------|-------------|--------------|
@@ -403,5 +464,7 @@ When completing an iteration, verify:
 - [ ] **Updated IMPROVEMENTS-LOG.md with new rules**
 
 ### Cleanup
-- [ ] Source code is zipped and source files deleted
-- [ ] Build artifacts removed (bin/, obj/, node_modules/, target/, etc.)
+- [ ] Source code is zipped to `source-code.zip` (source files ONLY - no bin/, obj/, target/, node_modules/, DLLs, .class files)
+- [ ] **All source code files and folders are DELETED after zipping**
+- [ ] **Iteration folder contains ONLY 2 files: ITERATION.md and source-code.zip**
+- [ ] Build artifacts removed (verify no bin/, obj/, node_modules/, target/ folders remain)

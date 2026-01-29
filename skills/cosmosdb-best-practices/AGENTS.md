@@ -48,11 +48,12 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
    - 4.6 [Configure SSL and connection mode for Cosmos DB Emulator](#46-configure-ssl-and-connection-mode-for-cosmos-db-emulator)
    - 4.7 [Configure Excluded Regions for Dynamic Failover](#47-configure-excluded-regions-for-dynamic-failover)
    - 4.8 [Enable content response on write operations in Java SDK](#48-enable-content-response-on-write-operations-in-java-sdk)
-   - 4.9 [Configure local development environment to avoid cloud connection conflicts](#49-configure-local-development-environment-to-avoid-cloud-connection-conflicts)
-   - 4.10 [Configure Preferred Regions for Availability](#410-configure-preferred-regions-for-availability)
-   - 4.11 [Handle 429 Errors with Retry-After](#411-handle-429-errors-with-retry-after)
-   - 4.12 [Use consistent enum serialization between Cosmos SDK and application layer](#412-use-consistent-enum-serialization-between-cosmos-sdk-and-application-layer)
-   - 4.13 [Reuse CosmosClient as Singleton](#413-reuse-cosmosclient-as-singleton)
+   - 4.9 [Spring Boot and Java version compatibility for Cosmos DB SDK](#49-spring-boot-and-java-version-compatibility-for-cosmos-db-sdk)
+   - 4.10 [Configure local development environment to avoid cloud connection conflicts](#410-configure-local-development-environment-to-avoid-cloud-connection-conflicts)
+   - 4.11 [Configure Preferred Regions for Availability](#411-configure-preferred-regions-for-availability)
+   - 4.12 [Handle 429 Errors with Retry-After](#412-handle-429-errors-with-retry-after)
+   - 4.13 [Use consistent enum serialization between Cosmos SDK and application layer](#413-use-consistent-enum-serialization-between-cosmos-sdk-and-application-layer)
+   - 4.14 [Reuse CosmosClient as Singleton](#414-reuse-cosmosclient-as-singleton)
 5. [Indexing Strategies](#5-indexing-strategies) — **MEDIUM-HIGH**
    - 5.1 [Use Composite Indexes for ORDER BY](#51-use-composite-indexes-for-order-by)
    - 5.2 [Exclude Unused Index Paths](#52-exclude-unused-index-paths)
@@ -2663,7 +2664,138 @@ Enabling content response does NOT increase RU cost - the document is already fe
 
 Reference: [Azure Cosmos DB Java SDK best practices](https://learn.microsoft.com/azure/cosmos-db/nosql/best-practice-java)
 
-### 4.9 Configure local development environment to avoid cloud connection conflicts
+### 4.9 Spring Boot and Java version compatibility for Cosmos DB SDK
+
+**Impact: CRITICAL** (Prevents build failures due to version incompatibility between Spring Boot and Java)
+
+## Spring Boot and Java Version Requirements
+
+The Azure Cosmos DB Java SDK works with various Spring Boot versions, but each Spring Boot version has **strict Java version requirements** that must be met for the project to build successfully.
+
+**Problem:**
+
+Developers may encounter build failures with cryptic error messages when the Java version doesn't match Spring Boot requirements:
+
+```
+[ERROR] bad class file...has wrong version 61.0, should be 55.0
+[ERROR] release version 17 not supported
+```
+
+These errors occur when:
+- Spring Boot 3.x is used with Java 11 or lower
+- The JAVA_HOME environment variable points to an incompatible Java version
+- Maven/Gradle is configured to use a different Java version than expected
+
+**Solution:**
+
+Always match your Java version to your Spring Boot requirements:
+
+### Version Compatibility Matrix
+
+| Spring Boot Version | Minimum Java | Recommended Java | Azure Cosmos SDK | Notes |
+|---------------------|--------------|------------------|------------------|-------|
+| **3.2.x** | 17 | 17 or 21 | 4.52.0+ | **Requires Java 17+** (non-negotiable) |
+| **3.1.x** | 17 | 17 or 21 | 4.52.0+ | **Requires Java 17+** (non-negotiable) |
+| **3.0.x** | 17 | 17 | 4.52.0+ | **Requires Java 17+** (non-negotiable) |
+| **2.7.x** | 8 | 11 or 17 | 4.52.0+ | Long-term support, uses `javax.*` |
+
+### pom.xml Configuration
+
+For **Spring Boot 3.x** (requires Java 17+):
+
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>3.2.1</version>
+</parent>
+
+<properties>
+    <java.version>17</java.version>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
+    <azure.cosmos.version>4.52.0</azure.cosmos.version>
+</properties>
+
+<dependencies>
+    <dependency>
+        <groupId>com.azure</groupId>
+        <artifactId>azure-cosmos</artifactId>
+        <version>${azure.cosmos.version}</version>
+    </dependency>
+</dependencies>
+```
+
+For **Spring Boot 2.7.x** (compatible with Java 8, 11, or 17):
+
+```xml
+<parent>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-parent</artifactId>
+    <version>2.7.18</version>
+</parent>
+
+<properties>
+    <java.version>11</java.version>  <!-- or 17 -->
+    <azure.cosmos.version>4.52.0</azure.cosmos.version>
+</properties>
+```
+
+### Verify Your Environment
+
+Before building, ensure your Java version matches your Spring Boot requirements:
+
+```bash
+# Check Java version
+java -version
+
+# Check Maven is using the correct Java version
+mvn -version
+
+# Set JAVA_HOME if needed (Windows PowerShell)
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.10.7-hotspot"
+$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
+
+# Set JAVA_HOME if needed (macOS/Linux)
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home
+export PATH=$JAVA_HOME/bin:$PATH
+```
+
+### Key Differences Between Spring Boot 2.x and 3.x
+
+| Aspect | Spring Boot 2.7.x | Spring Boot 3.x |
+|--------|-------------------|-----------------|
+| Minimum Java | Java 8 | **Java 17** |
+| Package namespace | `javax.*` | `jakarta.*` |
+| Azure Cosmos SDK | 4.52.0+ | 4.52.0+ |
+| Migration effort | N/A | High (package renames) |
+
+**Key Points:**
+
+- **Spring Boot 3.x is NOT compatible with Java 11 or lower** - the build will fail immediately
+- Always set `JAVA_HOME` to point to the correct Java version before building
+- Use explicit `maven.compiler.source` and `maven.compiler.target` properties to avoid ambiguity
+- Spring Boot 3.x requires migrating from `javax.*` to `jakarta.*` packages (breaking change)
+- The Azure Cosmos DB Java SDK (4.52.0+) works with both Spring Boot 2.7.x and 3.x
+
+**Common Pitfalls:**
+
+1. **Multiple Java versions installed**: System may default to older Java version
+   - Solution: Explicitly set `JAVA_HOME` before building
+
+2. **IDE using different Java than terminal**: IntelliJ/Eclipse may use project JDK settings
+   - Solution: Configure IDE project SDK to match Spring Boot requirements
+
+3. **Docker/CI environments**: Base image Java version may not match
+   - Solution: Use `eclipse-temurin:17-jdk` or `amazoncorretto:17` for Spring Boot 3.x
+
+**References:**
+
+- [Spring Boot 3.x System Requirements](https://docs.spring.io/spring-boot/docs/current/reference/html/getting-started.html#getting-started.system-requirements)
+- [Spring Boot 2.7.x System Requirements](https://docs.spring.io/spring-boot/docs/2.7.x/reference/html/getting-started.html#getting-started-system-requirements)
+- [Azure Cosmos DB Java SDK](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/sdk-java-v4)
+
+### 4.10 Configure local development environment to avoid cloud connection conflicts
 
 **Impact: MEDIUM** (prevents accidental connections to production instead of emulator)
 
@@ -2834,7 +2966,7 @@ azure:
 
 Reference: [Azure Cosmos DB Emulator](https://learn.microsoft.com/azure/cosmos-db/emulator)
 
-### 4.10 Configure Preferred Regions for Availability
+### 4.11 Configure Preferred Regions for Availability
 
 **Impact: HIGH** (enables automatic failover, reduces latency)
 
@@ -2930,7 +3062,7 @@ Best practices:
 
 Reference: [Configure preferred regions](https://learn.microsoft.com/azure/cosmos-db/nosql/tutorial-global-distribution)
 
-### 4.11 Handle 429 Errors with Retry-After
+### 4.12 Handle 429 Errors with Retry-After
 
 **Impact: HIGH** (prevents cascading failures)
 
@@ -3047,7 +3179,7 @@ await Task.WhenAll(tasks);
 
 Reference: [Handle rate limiting](https://learn.microsoft.com/azure/cosmos-db/nosql/troubleshoot-request-rate-too-large)
 
-### 4.12 Use consistent enum serialization between Cosmos SDK and application layer
+### 4.13 Use consistent enum serialization between Cosmos SDK and application layer
 
 **Impact: critical** (undefined)
 
@@ -3144,7 +3276,7 @@ public class Order
 - Point reads work but filtered queries don't
 - API returns different enum format than stored in Cosmos DB
 
-### 4.13 Reuse CosmosClient as Singleton
+### 4.14 Reuse CosmosClient as Singleton
 
 **Impact: CRITICAL** (prevents connection exhaustion)
 

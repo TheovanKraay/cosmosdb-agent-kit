@@ -83,6 +83,7 @@ Reference these guidelines when:
 - `sdk-serialization-enums` - Serialize enums as strings not integers
 - `sdk-emulator-ssl` - Configure SSL and connection mode for Cosmos DB Emulator
 - `sdk-java-content-response` - Enable content response on write operations (Java)
+- `sdk-java-spring-boot-versions` - Match Java version to Spring Boot requirements
 - `sdk-local-dev-config` - Configure local development to avoid cloud conflicts
 
 ### 5. Indexing Strategies (MEDIUM-HIGH)
