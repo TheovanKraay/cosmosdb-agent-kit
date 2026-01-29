@@ -206,12 +206,19 @@ testing/
 │     • If you discovered missing guidance, CREATE the rule NOW │
 │     • Add rule to skills/cosmosdb-best-practices/rules/        │
 │     • Run `npm run build` to regenerate AGENTS.md              │
-│     • Update IMPROVEMENTS-LOG.md with new rule details         │
 │     • See "Continuous Improvement" section for details         │
 └───────────────────────────────┬─────────────────────────────────┘
                                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│  7. Clean up iteration folder ⚠️ CRITICAL                      │
+│  7. ⚠️ UPDATE IMPROVEMENTS-LOG.md (MANDATORY)                  │
+│     • Add entry at TOP of Improvements section                │
+│     • Include: scenario, iteration, issues, new rules created │
+│     • Document lessons learned and files modified             │
+│     • See IMPROVEMENTS-LOG.md format section for template     │
+└───────────────────────────────┬─────────────────────────────────┘
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  8. Clean up iteration folder ⚠️ CRITICAL                      │
 │     • Zip ONLY source files: *.cs, *.java, *.py, etc.         │
 │     • DO NOT include: bin/, obj/, target/, node_modules/,     │
 │       DLLs, .class files, or any build artifacts              │
@@ -224,9 +231,9 @@ testing/
 
 ## 🔄 Continuous Improvement: The Feedback Loop
 
-**⚠️ CRITICAL: Create new rules DURING the iteration, not after!**
+**⚠️ CRITICAL: Create new rules AND update IMPROVEMENTS-LOG.md DURING the iteration, not after!**
 
-When you discover missing guidance or encounter issues that aren't covered by existing rules, **CREATE THE NEW RULE IMMEDIATELY** as part of your iteration work. This ensures the skill kit is continuously improved and the new rule is available for future iterations.
+When you discover missing guidance or encounter issues that aren't covered by existing rules, **CREATE THE NEW RULE IMMEDIATELY** as part of your iteration work, and **UPDATE THE IMPROVEMENTS LOG** to track the improvement. This ensures the skill kit is continuously improved and documented.
 
 ### When to Create a New Rule (DO THIS DURING STEP 6)
 
@@ -244,7 +251,7 @@ Create a new rule if you encounter ANY of these situations:
 
 ### Step-by-Step: Creating a New Rule During Your Iteration
 
-### Step-by-Step: Creating a New Rule During Your Iteration
+### Step-by-Step: Creating a New Rule AND Updating the Log
 
 #### 1. Identify the Gap
 
@@ -336,11 +343,58 @@ npm run build
 
 This compiles all individual rule files into the master `AGENTS.md` file that agents load.
 
-#### 6. Update IMPROVEMENTS-LOG.md
+#### 6. ⚠️ Update IMPROVEMENTS-LOG.md (MANDATORY)
 
-#### 6. Update IMPROVEMENTS-LOG.md
+**AFTER creating new rules, you MUST update the improvements log.** This is how we track the evolution of the skill kit over time.
 
-Document the new rule in `testing/IMPROVEMENTS-LOG.md`:
+Add an entry at the **TOP** of the "Improvements" section in `testing/IMPROVEMENTS-LOG.md`:
+
+```markdown
+#### YYYY-MM-DD: Iteration NNN - Scenario Name (Language / Framework)
+
+- **Scenario**: scenario-name
+- **Iteration**: NNN-language
+- **Result**: ✅ SUCCESSFUL or ❌ FAILED
+- **Score**: N/10
+- **Key Achievement**: Brief summary of what was accomplished/discovered
+
+**Critical Discovery** (if applicable):
+- What major gap was found
+- Impact of the gap
+- How it was resolved
+
+**New Rules Created** (if any):
+1. **rule-filename.md** (IMPACT_LEVEL)
+   - Brief description of what the rule covers
+   - Why it was needed
+
+**Issues Encountered & Resolved**:
+1. **Issue Name**
+   - Problem: What went wrong
+   - Error: Specific error message if applicable
+   - Solution: How it was fixed
+   - Status: ✅ RESOLVED or ⚠️ PARTIAL or ❌ UNRESOLVED
+
+**Test Results**:
+- ✅ What worked
+- ❌ What failed
+- ⚠️ What needs attention
+
+**Lessons Learned**:
+- Key takeaway 1
+- Key takeaway 2
+
+**FILES MODIFIED**:
+- ✅ path/to/new-rule.md - NEW (IMPACT)
+- ✅ path/to/updated-file.md - UPDATED
+- ✅ AGENTS.md - Recompiled (X total rules)
+```
+
+**See existing entries in `testing/IMPROVEMENTS-LOG.md` for full examples.**
+
+**⚠️ IMPORTANT**: Every completed iteration MUST have a corresponding entry in IMPROVEMENTS-LOG.md. This is not optional - it's how we measure and track progress.
+
+#### 7. Verify Your Changes
 
 ```markdown
 ## 2026-01-29 - Iteration 002 (Java)

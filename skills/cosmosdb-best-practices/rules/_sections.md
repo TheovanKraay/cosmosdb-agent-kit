@@ -41,3 +41,8 @@
 
 **Impact:** HIGH  
 **Description:** Architecture patterns for common scenarios like cross-partition query optimization, event sourcing, and multi-tenant designs.
+
+## 10. Vector Search (vector)
+
+**Impact:** HIGH  
+**Description:** Vector search configuration enables AI-powered semantic search and RAG patterns. Proper embedding storage, indexing, and query optimization are essential for performance and accuracy.
