@@ -29,7 +29,7 @@ Azure Cosmos DB performance optimization guidelines containing 45+ rules across 
 ## Installation
 
 ```bash
-npx add-skill AzureCosmosDB/cosmosdb-agent-kit
+npx skills add AzureCosmosDB/cosmosdb-agent-kit
 ```
 
 ## Usage
