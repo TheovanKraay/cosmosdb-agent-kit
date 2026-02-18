@@ -42,6 +42,9 @@ Reference these guidelines when:
 - `model-embed-related` - Embed related data retrieved together
 - `model-reference-large` - Reference data when items get too large
 - `model-avoid-2mb-limit` - Keep items well under 2MB limit
+- `model-id-constraints` - Follow ID value length and character constraints
+- `model-nesting-depth` - Stay within 128-level nesting depth limit
+- `model-numeric-precision` - Understand IEEE 754 numeric precision limits
 - `model-denormalize-reads` - Denormalize for read-heavy workloads
 - `model-schema-versioning` - Version your document schemas
 - `model-type-discriminator` - Use type discriminators for polymorphic data
@@ -53,6 +56,7 @@ Reference these guidelines when:
 - `partition-hierarchical` - Use hierarchical partition keys for flexibility
 - `partition-query-patterns` - Align partition key with query patterns
 - `partition-synthetic-keys` - Create synthetic keys when needed
+- `partition-key-length` - Respect partition key value length limits
 - `partition-20gb-limit` - Plan for 20GB logical partition limit
 
 ### 3. Query Optimization (HIGH)

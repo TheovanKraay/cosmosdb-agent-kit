@@ -1,14 +1,12 @@
 # Azure Cosmos DB Best Practices
 
 **Version 1.0.0**  
-CosmosDB Kit  
+CosmosDB Agent Kit  
 January 2026
 
 > **Note:**  
 > This document is primarily for agents and LLMs to follow when maintaining,  
-> generating, or refactoring Azure Cosmos DB application code. Humans  
-> may also find it useful, but guidance here is optimized for automation  
-> and consistency by AI-assisted workflows.
+> generating, or refactoring Azure Cosmos DB application code.
 
 ---
 
@@ -21,57 +19,61 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
 ## Table of Contents
 
 1. [Data Modeling](#1-data-modeling) — **CRITICAL**
-   - 1.1 [Embed Related Data Retrieved Together](#11-embed-related-data-retrieved-together)
-   - 1.2 [Reference Data When Items Grow Large](#12-reference-data-when-items-grow-large)
-   - 1.3 [Keep Items Well Under 2MB Limit](#13-keep-items-well-under-2mb-limit)
-   - 1.4 [Denormalize for Read-Heavy Workloads](#14-denormalize-for-read-heavy-workloads)
-   - 1.5 [Version Your Document Schemas](#15-version-your-document-schemas)
-   - 1.6 [Use Type Discriminators for Polymorphic Data](#16-use-type-discriminators-for-polymorphic-data)
+   - 1.1 [Keep Items Well Under 2MB Limit](#11-keep-items-well-under-2mb-limit)
+   - 1.2 [Denormalize for Read-Heavy Workloads](#12-denormalize-for-read-heavy-workloads)
+   - 1.3 [Embed Related Data Retrieved Together](#13-embed-related-data-retrieved-together)
+   - 1.4 [Follow ID Value Length and Character Constraints](#14-follow-id-value-length-and-character-constraints)
+   - 1.5 [Stay Within 128-Level Nesting Depth Limit](#15-stay-within-128-level-nesting-depth-limit)
+   - 1.6 [Understand IEEE 754 Numeric Precision Limits](#16-understand-ieee-754-numeric-precision-limits)
+   - 1.7 [Reference Data When Items Grow Large](#17-reference-data-when-items-grow-large)
+   - 1.8 [Version Your Document Schemas](#18-version-your-document-schemas)
+   - 1.9 [Use Type Discriminators for Polymorphic Data](#19-use-type-discriminators-for-polymorphic-data)
 2. [Partition Key Design](#2-partition-key-design) — **CRITICAL**
-   - 2.1 [Choose High-Cardinality Partition Keys](#21-choose-high-cardinality-partition-keys)
+   - 2.1 [Plan for 20GB Logical Partition Limit](#21-plan-for-20gb-logical-partition-limit)
    - 2.2 [Distribute Writes to Avoid Hot Partitions](#22-distribute-writes-to-avoid-hot-partitions)
    - 2.3 [Use Hierarchical Partition Keys for Flexibility](#23-use-hierarchical-partition-keys-for-flexibility)
-   - 2.4 [Align Partition Key with Query Patterns](#24-align-partition-key-with-query-patterns)
-   - 2.5 [Create Synthetic Partition Keys When Needed](#25-create-synthetic-partition-keys-when-needed)
-   - 2.6 [Plan for 20GB Logical Partition Limit](#26-plan-for-20gb-logical-partition-limit)
+   - 2.4 [Choose High-Cardinality Partition Keys](#24-choose-high-cardinality-partition-keys)
+   - 2.5 [Respect Partition Key Value Length Limits](#25-respect-partition-key-value-length-limits)
+   - 2.6 [Align Partition Key with Query Patterns](#26-align-partition-key-with-query-patterns)
+   - 2.7 [Create Synthetic Partition Keys When Needed](#27-create-synthetic-partition-keys-when-needed)
 3. [Query Optimization](#3-query-optimization) — **HIGH**
    - 3.1 [Minimize Cross-Partition Queries](#31-minimize-cross-partition-queries)
-   - 3.2 [Project Only Needed Fields](#32-project-only-needed-fields)
-   - 3.3 [Use Continuation Tokens for Pagination](#33-use-continuation-tokens-for-pagination)
-   - 3.4 [Avoid Full Container Scans](#34-avoid-full-container-scans)
+   - 3.2 [Avoid Full Container Scans](#32-avoid-full-container-scans)
+   - 3.3 [Order Filters by Selectivity](#33-order-filters-by-selectivity)
+   - 3.4 [Use Continuation Tokens for Pagination](#34-use-continuation-tokens-for-pagination)
    - 3.5 [Use Parameterized Queries](#35-use-parameterized-queries)
-   - 3.6 [Order Filters by Selectivity](#36-order-filters-by-selectivity)
+   - 3.6 [Project Only Needed Fields](#36-project-only-needed-fields)
 4. [SDK Best Practices](#4-sdk-best-practices) — **HIGH**
-   - 4.1 [Reuse CosmosClient as Singleton](#41-reuse-cosmosclient-as-singleton)
-   - 4.2 [Use Async APIs for Better Throughput](#42-use-async-apis-for-better-throughput)
-   - 4.3 [Handle 429 Errors with Retry-After](#43-handle-429-errors-with-retry-after)
-   - 4.4 [Use Direct Connection Mode for Production](#44-use-direct-connection-mode-for-production)
-   - 4.5 [Configure Preferred Regions for Availability](#45-configure-preferred-regions-for-availability)
-   - 4.6 [Log Diagnostics for Troubleshooting](#46-log-diagnostics-for-troubleshooting)
+   - 4.1 [Use Async APIs for Better Throughput](#41-use-async-apis-for-better-throughput)
+   - 4.2 [Use Direct Connection Mode for Production](#42-use-direct-connection-mode-for-production)
+   - 4.3 [Log Diagnostics for Troubleshooting](#43-log-diagnostics-for-troubleshooting)
+   - 4.4 [Configure Preferred Regions for Availability](#44-configure-preferred-regions-for-availability)
+   - 4.5 [Handle 429 Errors with Retry-After](#45-handle-429-errors-with-retry-after)
+   - 4.6 [Reuse CosmosClient as Singleton](#46-reuse-cosmosclient-as-singleton)
 5. [Indexing Strategies](#5-indexing-strategies) — **MEDIUM-HIGH**
-   - 5.1 [Exclude Unused Index Paths](#51-exclude-unused-index-paths)
-   - 5.2 [Use Composite Indexes for ORDER BY](#52-use-composite-indexes-for-order-by)
-   - 5.3 [Add Spatial Indexes for Geo Queries](#53-add-spatial-indexes-for-geo-queries)
+   - 5.1 [Use Composite Indexes for ORDER BY](#51-use-composite-indexes-for-order-by)
+   - 5.2 [Exclude Unused Index Paths](#52-exclude-unused-index-paths)
+   - 5.3 [Understand Indexing Modes](#53-understand-indexing-modes)
    - 5.4 [Choose Appropriate Index Types](#54-choose-appropriate-index-types)
-   - 5.5 [Understand Indexing Modes](#55-understand-indexing-modes)
-6. [Throughput & Scaling](#6-throughput--scaling) — **MEDIUM**
+   - 5.5 [Add Spatial Indexes for Geo Queries](#55-add-spatial-indexes-for-geo-queries)
+6. [Throughput & Scaling](#6-throughput-scaling) — **MEDIUM**
    - 6.1 [Use Autoscale for Variable Workloads](#61-use-autoscale-for-variable-workloads)
-   - 6.2 [Right-Size Provisioned Throughput](#62-right-size-provisioned-throughput)
-   - 6.3 [Consider Serverless for Dev/Test](#63-consider-serverless-for-devtest)
-   - 6.4 [Understand Burst Capacity](#64-understand-burst-capacity)
-   - 6.5 [Choose Container vs Database Throughput](#65-choose-container-vs-database-throughput)
+   - 6.2 [Understand Burst Capacity](#62-understand-burst-capacity)
+   - 6.3 [Choose Container vs Database Throughput](#63-choose-container-vs-database-throughput)
+   - 6.4 [Right-Size Provisioned Throughput](#64-right-size-provisioned-throughput)
+   - 6.5 [Consider Serverless for Dev/Test](#65-consider-serverless-for-dev-test)
 7. [Global Distribution](#7-global-distribution) — **MEDIUM**
-   - 7.1 [Configure Multi-Region Writes](#71-configure-multi-region-writes)
+   - 7.1 [Implement Conflict Resolution](#71-implement-conflict-resolution)
    - 7.2 [Choose Appropriate Consistency Level](#72-choose-appropriate-consistency-level)
-   - 7.3 [Implement Conflict Resolution](#73-implement-conflict-resolution)
-   - 7.4 [Configure Automatic Failover](#74-configure-automatic-failover)
+   - 7.3 [Configure Automatic Failover](#73-configure-automatic-failover)
+   - 7.4 [Configure Multi-Region Writes](#74-configure-multi-region-writes)
    - 7.5 [Add Read Regions Near Users](#75-add-read-regions-near-users)
-8. [Monitoring & Diagnostics](#8-monitoring--diagnostics) — **LOW-MEDIUM**
-   - 8.1 [Track RU Consumption](#81-track-ru-consumption)
-   - 8.2 [Monitor P99 Latency](#82-monitor-p99-latency)
-   - 8.3 [Alert on Throttling (429s)](#83-alert-on-throttling-429s)
-   - 8.4 [Integrate Azure Monitor](#84-integrate-azure-monitor)
-   - 8.5 [Enable Diagnostic Logging](#85-enable-diagnostic-logging)
+8. [Monitoring & Diagnostics](#8-monitoring-diagnostics) — **LOW-MEDIUM**
+   - 8.1 [Integrate Azure Monitor](#81-integrate-azure-monitor)
+   - 8.2 [Enable Diagnostic Logging](#82-enable-diagnostic-logging)
+   - 8.3 [Monitor P99 Latency](#83-monitor-p99-latency)
+   - 8.4 [Track RU Consumption](#84-track-ru-consumption)
+   - 8.5 [Alert on Throttling (429s)](#85-alert-on-throttling-429s-)
 
 ---
 
@@ -79,13 +81,157 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
 
 **Impact: CRITICAL**
 
-Proper data modeling is foundational to Cosmos DB performance. Poor modeling leads to expensive queries, excessive RU consumption, and scalability issues that are difficult to fix later.
+### 1.1 Keep Items Well Under 2MB Limit
 
-### 1.1 Embed Related Data Retrieved Together
+**Impact: CRITICAL** (prevents write failures)
 
-**Impact: CRITICAL (eliminates joins, reduces RU by 50-90%)**
+## Keep Items Well Under 2MB Limit
 
-Embed related data within a single document when they're always accessed together. This eliminates the need for multiple queries.
+Azure Cosmos DB enforces a 2MB maximum item size. Design documents to stay well under this limit to avoid runtime failures.
+
+**Incorrect (risk of hitting limit):**
+
+```csharp
+// Anti-pattern: storing large binary data in documents
+public class Document
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    
+    // Large base64-encoded file content - DANGER!
+    public string FileContent { get; set; }  // Could be megabytes
+    
+    // Or large arrays that grow
+    public List<AuditEntry> AuditLog { get; set; }  // Unbounded
+}
+
+// This will fail when content exceeds 2MB
+await container.CreateItemAsync(doc);
+// Microsoft.Azure.Cosmos.CosmosException: Request Entity Too Large
+```
+
+**Correct (bounded document size):**
+
+```csharp
+// Store metadata in Cosmos DB, large content in Blob Storage
+public class Document
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public long FileSizeBytes { get; set; }
+    public string ContentType { get; set; }
+    
+    // Reference to blob storage instead of inline content
+    public string BlobUri { get; set; }
+    
+    // Keep only recent/relevant audit entries
+    public List<AuditEntry> RecentAuditEntries { get; set; }  // Max 10-20 items
+}
+
+// Large content goes to Blob Storage
+await blobClient.UploadAsync(largeFileStream);
+var doc = new Document
+{
+    Id = Guid.NewGuid().ToString(),
+    Name = "large-file.pdf",
+    BlobUri = blobClient.Uri.ToString()
+};
+await container.CreateItemAsync(doc);
+```
+
+Size monitoring:
+
+```csharp
+// Check item size before writing
+var json = JsonSerializer.Serialize(item);
+var sizeBytes = Encoding.UTF8.GetByteCount(json);
+if (sizeBytes > 1_500_000) // 1.5MB warning threshold
+{
+    _logger.LogWarning("Item approaching size limit: {SizeKB}KB", sizeBytes / 1024);
+}
+```
+
+Reference: [Azure Cosmos DB service quotas](https://learn.microsoft.com/azure/cosmos-db/concepts-limits)
+
+### 1.2 Denormalize for Read-Heavy Workloads
+
+**Impact: HIGH** (reduces query RU by 2-10x)
+
+## Denormalize for Read-Heavy Workloads
+
+In read-heavy workloads, denormalize frequently-queried data to avoid expensive lookups. Accept write overhead for faster reads.
+
+**Incorrect (normalized requires multiple queries):**
+
+```csharp
+// Displaying product list with category names
+public class Product
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string CategoryId { get; set; }  // Just the ID
+    public decimal Price { get; set; }
+}
+
+// To display "Product Name - Category Name" requires JOIN-like pattern:
+var products = await GetProductsAsync();
+foreach (var product in products)
+{
+    // N+1 query problem!
+    var category = await container.ReadItemAsync<Category>(
+        product.CategoryId, new PartitionKey(product.CategoryId));
+    product.CategoryName = category.Name;
+}
+// 1 + N queries = terrible performance
+```
+
+**Correct (denormalized for read efficiency):**
+
+```csharp
+public class Product
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string CategoryId { get; set; }
+    
+    // Denormalized category info for display
+    public string CategoryName { get; set; }
+    public string CategorySlug { get; set; }
+    
+    public decimal Price { get; set; }
+}
+
+// Single query returns everything needed for display
+var query = "SELECT c.id, c.name, c.categoryName, c.price FROM c WHERE c.type = 'product'";
+var products = await container.GetItemQueryIterator<Product>(query).ReadNextAsync();
+// No additional queries needed!
+
+// When category changes, update products using Change Feed
+public async Task HandleCategoryChange(Category category)
+{
+    var query = $"SELECT * FROM c WHERE c.categoryId = '{category.Id}'";
+    await foreach (var product in container.GetItemQueryIterator<Product>(query))
+    {
+        product.CategoryName = category.Name;
+        await container.UpsertItemAsync(product);
+    }
+}
+```
+
+Denormalize when:
+- Read-to-write ratio is high (10:1 or more)
+- Denormalized data changes infrequently
+- Query patterns benefit from co-located data
+
+Reference: [Denormalization patterns](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data#denormalization)
+
+### 1.3 Embed Related Data Retrieved Together
+
+**Impact: CRITICAL** (eliminates joins, reduces RU by 50-90%)
+
+## Embed Related Data Retrieved Together
+
+Embed related data within a single document when they're always accessed together. This eliminates the need for multiple queries (Cosmos DB has no JOINs across documents).
 
 **Incorrect (requires multiple queries):**
 
@@ -95,129 +241,560 @@ var order = await container.ReadItemAsync<Order>(orderId, new PartitionKey(custo
 var customer = await container.ReadItemAsync<Customer>(order.CustomerId, new PartitionKey(order.CustomerId));
 var items = await container.GetItemQueryIterator<OrderItem>(
     $"SELECT * FROM c WHERE c.orderId = '{orderId}'").ReadNextAsync();
+
 // 3 separate queries = 3x latency + 3x RU cost
 ```
 
 **Correct (single read operation):**
 
 ```csharp
+// Embedded document - single query retrieves everything
 public class Order
 {
     public string Id { get; set; }
     public string CustomerId { get; set; }
-    public CustomerSummary Customer { get; set; }  // Embedded
-    public List<OrderItem> Items { get; set; }     // Embedded
+    
+    // Embedded customer summary (not full customer document)
+    public CustomerSummary Customer { get; set; }
+    
+    // Embedded order items
+    public List<OrderItem> Items { get; set; }
+    
     public decimal Total { get; set; }
+    public DateTime OrderDate { get; set; }
 }
 
-var order = await container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
 // Single read gets everything needed
+var order = await container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+// 1 query = lowest latency + minimal RU
 ```
 
-### 1.2 Reference Data When Items Grow Large
+Embed when:
+- Data is read together frequently
+- Embedded data changes infrequently
+- Embedded data is bounded in size
 
-**Impact: CRITICAL (prevents hitting 2MB limit)**
+Reference: [Data modeling in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)
 
-Use document references instead of embedding when embedded data would make items too large.
+### 1.4 Follow ID Value Length and Character Constraints
+
+**Impact: HIGH** (prevents write failures and cross-SDK interoperability issues)
+
+## Follow ID Value Length and Character Constraints
+
+Azure Cosmos DB enforces a **1,023 byte** maximum for the `id` property and restricts certain characters. Using non-alphanumeric characters causes interoperability problems across SDKs, connectors, and tools.
+
+**Incorrect (oversized or problematic IDs):**
+
+```csharp
+// Anti-pattern 1: ID derived from unbounded user input
+public class Document
+{
+    // ID could exceed 1,023 bytes if title is very long
+    public string Id => $"{Category}_{SubCategory}_{Title}_{Description}";
+    public string Category { get; set; }
+    public string SubCategory { get; set; }
+    public string Title { get; set; }
+    public string Description { get; set; }  // Unbounded!
+}
+
+// Anti-pattern 2: IDs containing forbidden or problematic characters
+var doc = new Document
+{
+    Id = "files/reports\\2026/Q1",  // Contains '/' and '\' - FORBIDDEN
+    Content = "..."
+};
+await container.CreateItemAsync(doc);
+// Fails or causes routing issues
+
+// Anti-pattern 3: Non-ASCII characters in IDs
+var doc2 = new Document
+{
+    Id = "レポート_2026_データ",  // Non-ASCII - interoperability risk
+    Content = "..."
+};
+// Works in some SDKs but may break in ADF, Spark, Kafka connectors
+```
+
+**Correct (safe, bounded IDs):**
+
+```csharp
+// Use GUIDs or short alphanumeric identifiers
+public class Document
+{
+    public string Id { get; set; }
+    public string Category { get; set; }
+    public string Title { get; set; }
+}
+
+// Option 1: GUID-based IDs (always safe, always unique)
+var doc = new Document
+{
+    Id = Guid.NewGuid().ToString(),  // "a1b2c3d4-e5f6-..."
+    Category = "reports",
+    Title = "Q1 Report"
+};
+
+// Option 2: Compact, deterministic IDs from business keys
+var doc2 = new Document
+{
+    Id = $"report-{tenantId}-{DateTime.UtcNow:yyyyMMdd}-{sequenceNum}",
+    Category = "reports",
+    Title = "Q1 Report"
+};
+
+// Option 3: Base64-encode when you must derive from non-ASCII data
+var rawId = "レポート_2026_データ";
+var doc3 = new Document
+{
+    Id = Convert.ToBase64String(Encoding.UTF8.GetBytes(rawId))
+            .Replace('/', '_').Replace('+', '-'),  // URL-safe Base64
+    Category = "reports",
+    Title = rawId  // Keep original value as a property
+};
+```
+
+Key constraints:
+- **Max length:** 1,023 bytes
+- **Forbidden characters:** `/` and `\` are not allowed
+- **Best practice:** Use only alphanumeric ASCII characters (`a-z`, `A-Z`, `0-9`, `-`, `_`)
+- **Why:** Some SDK versions, Azure Data Factory, Spark connector, and Kafka connector have known issues with non-alphanumeric IDs
+- Encode non-ASCII IDs with Base64 + custom encoding if needed for interoperability
+
+Reference: [Azure Cosmos DB service quotas - Per-item limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-item-limits)
+
+### 1.5 Stay Within 128-Level Nesting Depth Limit
+
+**Impact: MEDIUM** (prevents document rejection on deeply nested structures)
+
+## Stay Within 128-Level Nesting Depth Limit
+
+Azure Cosmos DB allows a maximum of **128 levels** of nesting for embedded objects and arrays. While 128 is generous, recursive or auto-generated structures can exceed this limit unexpectedly.
+
+**Incorrect (risk of exceeding nesting limit):**
+
+```csharp
+// Anti-pattern 1: Recursive tree stored as deeply nested JSON
+public class TreeNode
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    
+    // Recursive children - each level adds nesting depth
+    public List<TreeNode> Children { get; set; }
+}
+
+// A category hierarchy with 130+ levels will fail on write
+var root = BuildDeepTree(depth: 150);  // Exceeds 128 levels!
+await container.CreateItemAsync(root);
+// Microsoft.Azure.Cosmos.CosmosException: Document nesting depth exceeds limit
+
+// Anti-pattern 2: Deeply nested auto-generated JSON from ORMs
+// Serializing complex object graphs without cycle detection
+var entity = LoadEntityWithAllRelations();  // Lazy-loaded relations
+var json = JsonSerializer.Serialize(entity);  // May create deep nesting
+```
+
+**Correct (bounded nesting depth):**
+
+```csharp
+// Solution 1: Flatten deep hierarchies using path-based approach
+public class CategoryNode
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string ParentId { get; set; }
+    
+    // Materialized path captures hierarchy without nesting
+    public string Path { get; set; }  // e.g., "/root/electronics/phones/android"
+    public int Depth { get; set; }
+    
+    // Only store immediate children IDs, not nested objects
+    public List<string> ChildIds { get; set; }
+}
+
+// Each node is a flat document, hierarchy expressed via Path and ParentId
+var node = new CategoryNode
+{
+    Id = "cat-android",
+    Name = "Android",
+    ParentId = "cat-phones",
+    Path = "/root/electronics/phones/android",
+    Depth = 3,
+    ChildIds = new List<string> { "cat-samsung", "cat-pixel" }
+};
+```
+
+```csharp
+// Solution 2: Cap nesting depth when building recursive structures
+public class TreeNode
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public List<TreeNode> Children { get; set; }
+}
+
+// Limit nesting at serialization time
+public static TreeNode TruncateTree(TreeNode node, int maxDepth, int currentDepth = 0)
+{
+    if (currentDepth >= maxDepth || node.Children == null)
+    {
+        node.Children = null;  // Stop nesting here
+        return node;
+    }
+    
+    node.Children = node.Children
+        .Select(c => TruncateTree(c, maxDepth, currentDepth + 1))
+        .ToList();
+    return node;
+}
+
+// Keep well under 128 - aim for practical limits like 10-20
+var safeTree = TruncateTree(root, maxDepth: 20);
+await container.CreateItemAsync(safeTree);
+```
+
+Key points:
+- Maximum nesting depth is **128 levels** for embedded objects/arrays
+- Recursive data structures (trees, graphs) are the most common cause of violations
+- Prefer flat representations with references (parent IDs, materialized paths) for deep hierarchies
+- If nesting is required, enforce a practical depth cap well under 128
+
+Reference: [Azure Cosmos DB service quotas - Per-item limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-item-limits)
+
+### 1.6 Understand IEEE 754 Numeric Precision Limits
+
+**Impact: MEDIUM** (prevents silent data loss on large or precise numbers)
+
+## Understand IEEE 754 Numeric Precision Limits
+
+Azure Cosmos DB stores numbers using **IEEE 754 double-precision 64-bit** format. This means integers larger than 2^53 and decimals requiring more than ~15-17 significant digits will lose precision silently.
+
+**Incorrect (precision loss with large numbers):**
+
+```csharp
+// Anti-pattern 1: Storing large integers that exceed safe range
+public class Transaction
+{
+    public string Id { get; set; }
+    
+    // 64-bit integer IDs from external systems - DANGER!
+    public long ExternalTransactionId { get; set; }  // e.g., 9007199254740993
+    // Values > 9,007,199,254,740,992 (2^53) lose precision
+    // 9007199254740993 becomes 9007199254740992 silently!
+}
+
+// Anti-pattern 2: Financial calculations requiring exact decimal precision
+public class Invoice
+{
+    public string Id { get; set; }
+    
+    // Double can't represent all decimal values exactly
+    public double Amount { get; set; }  // 0.1 + 0.2 != 0.3 in IEEE 754
+    public double TaxRate { get; set; }
+}
+
+// 99999999999999.99 stored as double may become 99999999999999.98
+```
+
+**Correct (preserving precision):**
+
+```csharp
+// Solution 1: Store large integers and precise decimals as strings
+public class Transaction
+{
+    public string Id { get; set; }
+    
+    // Store large IDs as strings to preserve all digits
+    [JsonPropertyName("externalTransactionId")]
+    public string ExternalTransactionId { get; set; }  // "9007199254740993"
+}
+
+// Solution 2: Use string representation for financial amounts
+public class Invoice
+{
+    public string Id { get; set; }
+    
+    // Store monetary values as strings with fixed decimal places
+    [JsonPropertyName("amount")]
+    public string Amount { get; set; }  // "99999999999999.99"
+    
+    [JsonPropertyName("taxRate")]
+    public string TaxRate { get; set; }  // "0.0825"
+    
+    // Parse in application code for calculations
+    public decimal GetAmount() => decimal.Parse(Amount);
+    public decimal GetTaxRate() => decimal.Parse(TaxRate);
+}
+```
+
+```csharp
+// Solution 3: Store amounts as integer minor units (cents, paise, etc.)
+public class Payment
+{
+    public string Id { get; set; }
+    
+    // Store $199.99 as 19999 cents - always safe as integer within 2^53
+    public long AmountInCents { get; set; }
+    public string Currency { get; set; }  // "USD"
+    
+    // Helper for display
+    public decimal GetDisplayAmount() => AmountInCents / 100m;
+}
+
+var payment = new Payment
+{
+    Id = Guid.NewGuid().ToString(),
+    AmountInCents = 19999,  // $199.99
+    Currency = "USD"
+};
+await container.CreateItemAsync(payment);
+```
+
+Key points:
+- **Safe integer range:** -2^53 to 2^53 (±9,007,199,254,740,992)
+- **Significant digits:** ~15-17 decimal digits of precision
+- Store large integers (snowflake IDs, blockchain hashes) as **strings**
+- Store financial/monetary values as **strings** or **integer minor units** (cents)
+- Numbers within the safe range (most counters, ages, quantities) are fine as-is
+
+Reference: [Azure Cosmos DB service quotas - Per-item limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-item-limits)
+
+### 1.7 Reference Data When Items Grow Large
+
+**Impact: CRITICAL** (prevents hitting 2MB limit)
+
+## Reference Data When Items Grow Large
+
+Use document references instead of embedding when embedded data would make items too large, or when embedded data changes independently.
 
 **Incorrect (embedded array grows unbounded):**
 
 ```csharp
+// Anti-pattern: blog post with all comments embedded
 public class BlogPost
 {
     public string Id { get; set; }
     public string Title { get; set; }
-    public List<Comment> Comments { get; set; }  // Could grow to thousands!
+    public string Content { get; set; }
+    
+    // This array can grow forever - will eventually hit 2MB limit!
+    public List<Comment> Comments { get; set; } // Could be thousands
 }
+
+// Eventually fails when document exceeds 2MB
+await container.UpsertItemAsync(blogPost);
+// RequestEntityTooLarge exception
 ```
 
-**Correct (reference pattern):**
+**Correct (reference pattern for unbounded relationships):**
 
 ```csharp
-// Separate comment documents in same partition
+// Blog post document (bounded size)
+public class BlogPost
+{
+    public string Id { get; set; }
+    public string PostId { get; set; }  // Partition key
+    public string Type { get; set; } = "post";
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public int CommentCount { get; set; }  // Denormalized count
+}
+
+// Separate comment documents (same partition for efficient queries)
 public class Comment
 {
     public string Id { get; set; }
     public string PostId { get; set; }  // Partition key - same as post
     public string Type { get; set; } = "comment";
+    public string AuthorId { get; set; }
     public string Text { get; set; }
+    public DateTime CreatedAt { get; set; }
 }
+
+// Query comments within same partition - efficient!
+var comments = container.GetItemQueryIterator<Comment>(
+    new QueryDefinition("SELECT * FROM c WHERE c.postId = @postId AND c.type = 'comment' ORDER BY c.createdAt DESC")
+        .WithParameter("@postId", postId),
+    requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(postId) }
+);
 ```
 
-### 1.3 Keep Items Well Under 2MB Limit
+Use references when:
+- Embedded data is unbounded (arrays that grow)
+- Embedded data changes frequently/independently
+- You need to query embedded data separately
 
-**Impact: CRITICAL (prevents write failures)**
+Reference: [Model document data](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data#referencing-data)
 
-Store large content in Blob Storage, keep metadata in Cosmos DB.
+### 1.8 Version Your Document Schemas
 
-**Incorrect:**
+**Impact: MEDIUM** (enables safe schema evolution)
 
-```csharp
-public class Document
-{
-    public string FileContent { get; set; }  // Large base64 - DANGER!
-}
-```
+## Version Your Document Schemas
 
-**Correct:**
+Include schema version in documents to handle evolution gracefully. This enables safe migrations and backward-compatible reads.
 
-```csharp
-public class Document
-{
-    public string Name { get; set; }
-    public string BlobUri { get; set; }  // Reference to Blob Storage
-}
-```
-
-### 1.4 Denormalize for Read-Heavy Workloads
-
-**Impact: HIGH (reduces query RU by 2-10x)**
-
-Duplicate frequently-read data to avoid expensive lookups.
-
-**Correct:**
+**Incorrect (no version tracking):**
 
 ```csharp
-public class Product
+// Original schema
+public class UserV1
 {
     public string Id { get; set; }
-    public string CategoryId { get; set; }
-    public string CategoryName { get; set; }  // Denormalized for display
+    public string Name { get; set; }  // Later split into FirstName + LastName
+    public string Address { get; set; }  // Later becomes Address object
 }
-```
 
-### 1.5 Version Your Document Schemas
-
-**Impact: MEDIUM (enables safe schema evolution)**
-
-Include schema version for backward-compatible reads.
-
-```csharp
+// After schema change, old documents break deserialization
 public class User
 {
     public string Id { get; set; }
-    public int SchemaVersion { get; set; } = 2;
+    public string FirstName { get; set; }  // Null for old docs!
+    public string LastName { get; set; }   // Null for old docs!
+    public Address Address { get; set; }   // Deserialization fails!
 }
 ```
 
-### 1.6 Use Type Discriminators for Polymorphic Data
-
-**Impact: MEDIUM (enables efficient filtering)**
-
-Include type field when storing multiple entity types in same container.
+**Correct (versioned documents):**
 
 ```csharp
-public abstract class BaseEntity
+public abstract class UserBase
 {
     public string Id { get; set; }
+    public int SchemaVersion { get; set; }
+}
+
+public class UserV1 : UserBase
+{
+    public string Name { get; set; }
+    public string Address { get; set; }
+}
+
+public class UserV2 : UserBase
+{
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public AddressV2 Address { get; set; }
+}
+
+// Read with version handling
+public async Task<User> GetUserAsync(string id, string partitionKey)
+{
+    var response = await container.ReadItemStreamAsync(id, new PartitionKey(partitionKey));
+    using var doc = await JsonDocument.ParseAsync(response.Content);
+    var version = doc.RootElement.GetProperty("schemaVersion").GetInt32();
+    
+    return version switch
+    {
+        1 => MigrateV1ToV2(JsonSerializer.Deserialize<UserV1>(doc)),
+        2 => JsonSerializer.Deserialize<UserV2>(doc),
+        _ => throw new NotSupportedException($"Unknown schema version: {version}")
+    };
+}
+
+// Background migration using Change Feed
+public async Task MigrateUserDocuments()
+{
+    var changeFeed = container.GetChangeFeedProcessorBuilder<UserV1>("migration", HandleChanges)
+        .WithInstanceName("migrator")
+        .WithStartTime(DateTime.MinValue.ToUniversalTime())
+        .Build();
+    await changeFeed.StartAsync();
+}
+```
+
+Always increment version when:
+- Adding required fields
+- Changing field types
+- Restructuring nested objects
+
+Reference: [Schema evolution in Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)
+
+### 1.9 Use Type Discriminators for Polymorphic Data
+
+**Impact: MEDIUM** (enables efficient single-container design)
+
+## Use Type Discriminators for Polymorphic Data
+
+When storing multiple entity types in the same container, include a type discriminator field for efficient filtering and deserialization.
+
+**Incorrect (no type discrimination):**
+
+```csharp
+// Multiple types in same container without clear identification
+public class Order { public string Id { get; set; } /* ... */ }
+public class Customer { public string Id { get; set; } /* ... */ }
+public class Product { public string Id { get; set; } /* ... */ }
+
+// How do you query just orders? Full scan!
+var allItems = await container.GetItemQueryIterator<dynamic>("SELECT * FROM c").ReadNextAsync();
+var orders = allItems.Where(x => x.orderDate != null);  // Brittle, inefficient
+```
+
+**Correct (explicit type discriminator):**
+
+```csharp
+// Base class with type discriminator
+public abstract class BaseEntity
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; }
+    
+    [JsonPropertyName("type")]
     public abstract string Type { get; }
+    
+    [JsonPropertyName("partitionKey")]
+    public string PartitionKey { get; set; }
 }
 
 public class Order : BaseEntity
 {
     public override string Type => "order";
+    public DateTime OrderDate { get; set; }
+    public List<OrderItem> Items { get; set; }
+}
+
+public class Customer : BaseEntity
+{
+    public override string Type => "customer";
+    public string Email { get; set; }
+    public string Name { get; set; }
+}
+
+public class Product : BaseEntity
+{
+    public override string Type => "product";
+    public string Name { get; set; }
+    public decimal Price { get; set; }
+}
+
+// Efficient queries by type - uses index!
+var ordersQuery = new QueryDefinition(
+    "SELECT * FROM c WHERE c.type = @type AND c.partitionKey = @pk")
+    .WithParameter("@type", "order")
+    .WithParameter("@pk", customerId);
+
+// Polymorphic deserialization
+public static BaseEntity DeserializeEntity(JsonDocument doc)
+{
+    var type = doc.RootElement.GetProperty("type").GetString();
+    return type switch
+    {
+        "order" => doc.Deserialize<Order>(),
+        "customer" => doc.Deserialize<Customer>(),
+        "product" => doc.Deserialize<Product>(),
+        _ => throw new InvalidOperationException($"Unknown type: {type}")
+    };
 }
 ```
+
+Benefits:
+- Efficient filtering with indexed `type` field
+- Clear deserialization logic
+- Self-documenting data structure
+
+Reference: [Model data in Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)
 
 ---
 
@@ -225,75 +802,606 @@ public class Order : BaseEntity
 
 **Impact: CRITICAL**
 
-Partition key choice determines data distribution, query efficiency, and scalability limits.
+### 2.1 Plan for 20GB Logical Partition Limit
 
-### 2.1 Choose High-Cardinality Partition Keys
+**Impact: HIGH** (prevents partition split failures)
 
-**Impact: CRITICAL (enables horizontal scalability)**
+## Plan for 20GB Logical Partition Limit
 
-Select partition keys with many unique values.
+Each logical partition has a 20GB storage limit. Design partition keys to ensure no single partition value accumulates more than 20GB.
 
-**Incorrect:**
-
-```csharp
-public string Status { get; set; }  // Only 5-10 values - BAD!
-```
-
-**Correct:**
+**Incorrect (unbounded partition growth):**
 
 ```csharp
-public string CustomerId { get; set; }  // Millions of unique values - GOOD!
+// Anti-pattern: partition key with unbounded data accumulation
+public class AuditLog
+{
+    public string Id { get; set; }
+    public string SystemId { get; set; }  // Partition key - only 3 systems!
+    public DateTime Timestamp { get; set; }
+    public string Action { get; set; }
+    public string Details { get; set; }
+}
+
+// Problem: Each system accumulates logs forever
+// "system-a" partition will eventually hit 20GB
+// Writes will fail with: PartitionKeyRangeIsFull
 ```
+
+**Correct (bounded partition growth):**
+
+```csharp
+// Solution 1: Time-bucket the partition key
+public class AuditLog
+{
+    public string Id { get; set; }
+    public string SystemId { get; set; }
+    public DateTime Timestamp { get; set; }
+    
+    // Partition by system + month
+    public string PartitionKey => $"{SystemId}_{Timestamp:yyyy-MM}";
+}
+
+// Each partition holds ~1 month of data per system
+// Old partitions naturally stop growing
+```
+
+```csharp
+// Solution 2: Use hierarchical partition keys
+var containerProperties = new ContainerProperties
+{
+    Id = "audit-logs",
+    PartitionKeyPaths = new List<string> 
+    { 
+        "/systemId",
+        "/yearMonth"  // Secondary level prevents 20GB limit
+    }
+};
+
+public class AuditLog
+{
+    public string Id { get; set; }
+    public string SystemId { get; set; }
+    public string YearMonth { get; set; }  // "2026-01"
+    public DateTime Timestamp { get; set; }
+}
+```
+
+```csharp
+// Monitor partition sizes
+public async Task CheckPartitionSizes()
+{
+    var partitionKeyRanges = container.GetFeedRanges();
+    
+    foreach (var range in await partitionKeyRanges)
+    {
+        var iterator = container.GetItemQueryIterator<dynamic>(
+            "SELECT * FROM c",
+            requestOptions: new QueryRequestOptions { FeedRange = range });
+        
+        // Check size via metrics or diagnostic headers
+        var response = await iterator.ReadNextAsync();
+        _logger.LogInformation(
+            "Partition {Range}: {Count} items, {RU} RU", 
+            range, response.Count, response.RequestCharge);
+    }
+}
+
+// Set up alerts before hitting limits
+// Azure Monitor: PartitionKeyRangeId with high storage
+```
+
+Capacity planning:
+- Estimate item count per partition key value
+- Calculate average item size × item count
+- Target < 10GB per partition value (50% safety margin)
+- Consider time-based bucketing for growing data
+
+Reference: [Partition key limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-logical-partition)
 
 ### 2.2 Distribute Writes to Avoid Hot Partitions
 
-**Impact: CRITICAL (prevents throughput bottlenecks)**
+**Impact: CRITICAL** (prevents throughput bottlenecks)
 
-Ensure writes spread evenly across partitions.
+## Distribute Writes to Avoid Hot Partitions
 
-**Incorrect:**
+Ensure writes distribute evenly across partitions. A hot partition limits throughput to that single partition's capacity.
 
-```csharp
-public string Date { get; set; }  // "2026-01-21" - all today's writes hit ONE partition!
-```
-
-**Correct:**
+**Incorrect (all writes hit single partition):**
 
 ```csharp
-public string PartitionKey => $"{Date}_shard{hash % 10}";  // Distribute across 10 partitions
+// Anti-pattern: time-based partition key with current-time writes
+public class Event
+{
+    public string Id { get; set; }
+    
+    // All events for "today" go to same partition!
+    public string Date { get; set; }  // ❌ "2026-01-21" - HOT!
+}
+
+// All current writes bottleneck on today's partition
+// Yesterday's partition sits idle
+await container.CreateItemAsync(new Event 
+{ 
+    Id = Guid.NewGuid().ToString(),
+    Date = DateTime.UtcNow.ToString("yyyy-MM-dd")  // All writes here!
+});
 ```
+
+```csharp
+// Anti-pattern: singleton partition key
+public class Config
+{
+    public string Id { get; set; }
+    public string PartitionKey { get; set; } = "config";  // ❌ ONE partition!
+}
+// Everything in single 10K RU/s max partition
+```
+
+**Correct (distributed writes):**
+
+```csharp
+// Good: write-sharding for time-series data
+public class Event
+{
+    public string Id { get; set; }
+    
+    // Combine date with hash suffix for distribution
+    public string PartitionKey { get; set; }  // "2026-01-21_shard3"
+}
+
+public static string CreateTimeShardedKey(DateTime timestamp, int shardCount = 10)
+{
+    var dateKey = timestamp.ToString("yyyy-MM-dd");
+    var shard = Math.Abs(Guid.NewGuid().GetHashCode()) % shardCount;
+    return $"{dateKey}_shard{shard}";
+}
+
+// Writes distribute across 10 partitions per day
+await container.CreateItemAsync(new Event 
+{ 
+    Id = Guid.NewGuid().ToString(),
+    PartitionKey = CreateTimeShardedKey(DateTime.UtcNow)
+});
+```
+
+```csharp
+// Good: natural distribution with entity IDs
+public class Order
+{
+    public string Id { get; set; }
+    public string CustomerId { get; set; }  // ✅ Natural distribution
+    public DateTime OrderDate { get; set; }
+}
+
+// Each customer's orders in their own partition
+// Writes naturally spread across many customers
+```
+
+Monitor for hot partitions:
+- Check Metrics → Normalized RU Consumption
+- Look for partitions consistently at 100%
+- Use Azure Monitor alerts for throttling
+
+Reference: [Design for partition hot-spotting](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data#design-for-partition-key-hot-spots)
 
 ### 2.3 Use Hierarchical Partition Keys for Flexibility
 
-**Impact: HIGH (overcomes 20GB limit)**
+**Impact: HIGH** (overcomes 20GB limit, enables targeted queries)
 
-Use multiple levels for large tenants.
+## Use Hierarchical Partition Keys for Flexibility
 
-```csharp
-PartitionKeyPaths = new List<string> { "/tenantId", "/year", "/month" }
-```
+Use hierarchical partition keys (HPK) to overcome the 20GB logical partition limit and enable targeted multi-partition queries.
 
-### 2.4 Align Partition Key with Query Patterns
-
-**Impact: CRITICAL (enables single-partition queries)**
-
-Choose partition key matching your most frequent queries.
-
-### 2.5 Create Synthetic Partition Keys When Needed
-
-**Impact: HIGH (optimizes for multiple access patterns)**
-
-Combine fields when no single field is ideal.
+**Incorrect (single-level hits 20GB limit):**
 
 ```csharp
-public string PartitionKey => $"{DeviceId}_{Timestamp:yyyy-MM}";
+// Problem: Large tenant exceeds 20GB logical partition limit
+public class Document
+{
+    public string Id { get; set; }
+    public string TenantId { get; set; }  // Single partition key
+    // Large tenants hit 20GB ceiling!
+}
+
+// Must spread tenant data manually
+// Queries across "big-tenant_shard1", "big-tenant_shard2" are complex
 ```
 
-### 2.6 Plan for 20GB Logical Partition Limit
+**Correct (hierarchical partition keys):**
 
-**Impact: HIGH (prevents partition split failures)**
+```csharp
+// Create container with hierarchical partition key
+var containerProperties = new ContainerProperties
+{
+    Id = "documents",
+    PartitionKeyPaths = new List<string> 
+    { 
+        "/tenantId",   // Level 1: Tenant
+        "/year",       // Level 2: Year  
+        "/month"       // Level 3: Month (optional)
+    }
+};
 
-Design to stay under 20GB per partition key value.
+await database.CreateContainerAsync(containerProperties, throughput: 10000);
+
+// Document with hierarchical key
+public class Document
+{
+    public string Id { get; set; }
+    public string TenantId { get; set; }
+    public int Year { get; set; }
+    public int Month { get; set; }
+    public string Content { get; set; }
+}
+
+// Query targeting specific levels
+// Level 1 only: scans all partitions for tenant
+var tenantDocs = container.GetItemQueryIterator<Document>(
+    new QueryDefinition("SELECT * FROM c WHERE c.tenantId = @tenant")
+        .WithParameter("@tenant", "acme-corp"));
+
+// Level 1+2: targets specific year partitions
+var yearDocs = container.GetItemQueryIterator<Document>(
+    new QueryDefinition("SELECT * FROM c WHERE c.tenantId = @tenant AND c.year = @year")
+        .WithParameter("@tenant", "acme-corp")
+        .WithParameter("@year", 2026),
+    requestOptions: new QueryRequestOptions
+    {
+        PartitionKey = new PartitionKeyBuilder()
+            .Add("acme-corp")
+            .Add(2026)
+            .Build()
+    });
+
+// Full key: single partition point read
+var doc = await container.ReadItemAsync<Document>(
+    docId,
+    new PartitionKeyBuilder()
+        .Add("acme-corp")
+        .Add(2026)
+        .Add(1)
+        .Build());
+```
+
+Benefits of HPK:
+- Each level combination creates separate logical partitions (no 20GB limit per tenant)
+- Queries can target specific levels for efficiency
+- Natural data organization (tenant → year → month)
+
+Reference: [Hierarchical partition keys](https://learn.microsoft.com/azure/cosmos-db/hierarchical-partition-keys)
+
+### 2.4 Choose High-Cardinality Partition Keys
+
+**Impact: CRITICAL** (enables horizontal scalability)
+
+## Choose High-Cardinality Partition Keys
+
+Select partition keys with many unique values to ensure even data distribution. Low-cardinality keys create hot partitions.
+
+**Incorrect (low cardinality creates hotspots):**
+
+```csharp
+// Anti-pattern: using status as partition key
+public class Order
+{
+    public string Id { get; set; }
+    
+    // Only 5-10 unique values: "pending", "processing", "shipped", "delivered", "cancelled"
+    public string Status { get; set; }  // ❌ BAD partition key!
+}
+
+// Result: All "pending" orders in ONE partition
+// That partition becomes a hotspot during peak ordering!
+```
+
+```csharp
+// Anti-pattern: using country as partition key
+public class User
+{
+    public string Id { get; set; }
+    
+    // Only ~195 countries, uneven distribution
+    public string Country { get; set; }  // ❌ BAD - US/India will be hot
+}
+```
+
+**Correct (high cardinality with even distribution):**
+
+```csharp
+// Good: using unique identifier as partition key
+public class Order
+{
+    public string Id { get; set; }
+    
+    // Millions of unique customers = even distribution
+    public string CustomerId { get; set; }  // ✅ GOOD partition key
+    
+    public string Status { get; set; }  // Just a regular property now
+}
+
+// Good: using tenant ID for multi-tenant apps
+public class Document
+{
+    public string Id { get; set; }
+    
+    // Each tenant gets their own partition(s)
+    public string TenantId { get; set; }  // ✅ GOOD - natural isolation
+}
+
+// Good: using device ID for IoT
+public class Telemetry
+{
+    public string Id { get; set; }
+    
+    // Thousands/millions of devices
+    public string DeviceId { get; set; }  // ✅ GOOD partition key
+    
+    public DateTime Timestamp { get; set; }
+    public double Temperature { get; set; }
+}
+```
+
+Good partition keys typically:
+- Have thousands to millions of unique values
+- Match your most common query patterns
+- Distribute writes evenly (no single key dominates)
+
+Reference: [Partitioning in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/partitioning-overview)
+
+### 2.5 Respect Partition Key Value Length Limits
+
+**Impact: HIGH** (prevents write failures from oversized keys)
+
+## Respect Partition Key Value Length Limits
+
+Azure Cosmos DB enforces a maximum partition key value length of **2,048 bytes** (or **101 bytes** if large partition keys are not enabled). Exceeding this limit causes write failures at runtime.
+
+**Incorrect (risk of exceeding partition key length):**
+
+```csharp
+// Anti-pattern: concatenating many fields into a partition key
+public class Document
+{
+    public string Id { get; set; }
+    
+    // Partition key built from long descriptions - DANGER!
+    public string PartitionKey => $"{TenantName}_{DepartmentName}_{TeamName}_{ProjectDescription}";
+    
+    public string TenantName { get; set; }       // Could be very long
+    public string DepartmentName { get; set; }
+    public string TeamName { get; set; }
+    public string ProjectDescription { get; set; } // Unbounded user input
+}
+
+// If PartitionKey exceeds 2,048 bytes:
+// Microsoft.Azure.Cosmos.CosmosException: Partition key value is too large
+```
+
+**Correct (bounded partition key values):**
+
+```csharp
+// Use short, bounded identifiers for partition keys
+public class Document
+{
+    public string Id { get; set; }
+    
+    // Short, deterministic IDs - always well under 2,048 bytes
+    public string TenantId { get; set; }        // e.g., "t-abc123"
+    public string DepartmentId { get; set; }    // e.g., "dept-42"
+    
+    // Partition key uses compact identifiers
+    public string PartitionKey => $"{TenantId}_{DepartmentId}";
+    
+    // Keep long text as regular properties, not in the partition key
+    public string TenantName { get; set; }
+    public string DepartmentName { get; set; }
+    public string ProjectDescription { get; set; }
+}
+```
+
+```csharp
+// If you must derive a key from long values, hash or truncate them
+public class Document
+{
+    public string Id { get; set; }
+    public string LongCategoryPath { get; set; }  // e.g., deep taxonomy
+    
+    // Hash long values to a fixed-length partition key
+    public string PartitionKey
+    {
+        get
+        {
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(LongCategoryPath));
+            return Convert.ToBase64String(hash)[..16]; // Fixed 16-char key
+        }
+    }
+}
+```
+
+Key points:
+- Default limit is **101 bytes** without large partition key feature enabled
+- With large partition keys enabled, limit increases to **2,048 bytes**
+- Enable large partition keys for new containers if you need longer values
+- Prefer short GUIDs, IDs, or codes over human-readable strings for partition keys
+
+Reference: [Azure Cosmos DB service quotas - Per-item limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-item-limits)
+
+### 2.6 Align Partition Key with Query Patterns
+
+**Impact: CRITICAL** (enables single-partition queries)
+
+## Align Partition Key with Query Patterns
+
+Choose a partition key that supports your most frequent queries. Single-partition queries are orders of magnitude faster than cross-partition.
+
+**Incorrect (partition key misaligned with queries):**
+
+```csharp
+// Document partitioned by category
+public class Product
+{
+    public string Id { get; set; }
+    public string Category { get; set; }  // Partition key
+    public string SellerId { get; set; }
+}
+
+// But most queries are by seller!
+// This forces expensive cross-partition scan
+var sellerProducts = container.GetItemQueryIterator<Product>(
+    new QueryDefinition("SELECT * FROM c WHERE c.sellerId = @seller")
+        .WithParameter("@seller", sellerId));
+// Scans ALL partitions - high RU, high latency
+```
+
+**Correct (partition key matches query patterns):**
+
+```csharp
+// Step 1: Analyze your query patterns
+// - 80% of queries: "Get all products for seller X"
+// - 15% of queries: "Get product by ID"
+// - 5% of queries: "Get products by category"
+
+// Step 2: Choose partition key for dominant pattern
+public class Product
+{
+    public string Id { get; set; }
+    public string SellerId { get; set; }  // Partition key - matches 80% queries!
+    public string Category { get; set; }
+}
+
+// Most common query is now single-partition
+var sellerProducts = container.GetItemQueryIterator<Product>(
+    new QueryDefinition("SELECT * FROM c WHERE c.sellerId = @seller")
+        .WithParameter("@seller", sellerId),
+    requestOptions: new QueryRequestOptions 
+    { 
+        PartitionKey = new PartitionKey(sellerId)  // Single partition!
+    });
+// Fast, low RU
+
+// For less common category queries, accept cross-partition
+// Or create a secondary container partitioned by category
+```
+
+```csharp
+// E-commerce example: Orders partitioned by CustomerId
+public class Order
+{
+    public string Id { get; set; }
+    public string CustomerId { get; set; }  // Partition key
+    public DateTime OrderDate { get; set; }
+    public string Status { get; set; }
+}
+
+// "Show my orders" - single partition, fast
+// "All orders today" - cross-partition, but rare admin query
+
+// Chat example: Messages partitioned by ConversationId
+public class Message
+{
+    public string Id { get; set; }
+    public string ConversationId { get; set; }  // Partition key
+    public string SenderId { get; set; }
+    public string Content { get; set; }
+}
+
+// "Get messages in conversation" - single partition, fast
+```
+
+Reference: [Choose a partition key](https://learn.microsoft.com/azure/cosmos-db/partitioning-overview#choose-a-partition-key)
+
+### 2.7 Create Synthetic Partition Keys When Needed
+
+**Impact: HIGH** (optimizes for multiple access patterns)
+
+## Create Synthetic Partition Keys When Needed
+
+When no single natural field serves as an ideal partition key, create a synthetic key by combining multiple fields.
+
+**Incorrect (forced to choose suboptimal natural key):**
+
+```csharp
+// IoT scenario: need to query by device AND time range
+public class Telemetry
+{
+    public string Id { get; set; }
+    public string DeviceId { get; set; }  // Partition key?
+    public DateTime Timestamp { get; set; }
+    public double Value { get; set; }
+}
+
+// If partitioned by DeviceId alone:
+// - Old data accumulates forever in same partition
+// - Time-range queries still scan entire partition
+
+// If partitioned by Timestamp alone:
+// - Device queries are cross-partition
+// - Hot partition on current time
+```
+
+**Correct (synthetic partition key):**
+
+```csharp
+public class Telemetry
+{
+    public string Id { get; set; }
+    public string DeviceId { get; set; }
+    public DateTime Timestamp { get; set; }
+    public double Value { get; set; }
+    
+    // Synthetic key combining device + time bucket
+    public string PartitionKey => $"{DeviceId}_{Timestamp:yyyy-MM}";
+}
+
+// Creates partitions like: "device123_2026-01", "device123_2026-02"
+// Benefits:
+// - Single device's data spreads across time-based partitions
+// - Time-range queries can target specific partitions
+// - No partition grows indefinitely
+
+// Query device for specific month - single partition
+var query = container.GetItemQueryIterator<Telemetry>(
+    new QueryDefinition("SELECT * FROM c WHERE c.deviceId = @device")
+        .WithParameter("@device", deviceId),
+    requestOptions: new QueryRequestOptions
+    {
+        PartitionKey = new PartitionKey($"{deviceId}_2026-01")
+    });
+```
+
+```csharp
+// Multi-tenant with user-level isolation
+public class UserDocument
+{
+    public string Id { get; set; }
+    public string TenantId { get; set; }
+    public string UserId { get; set; }
+    
+    // Synthetic key for tenant + user isolation
+    public string PartitionKey => $"{TenantId}:{UserId}";
+}
+
+// Each user gets their own partition within tenant
+// Query all user's docs - single partition
+// Query tenant's docs - targeted cross-partition (just that tenant's users)
+```
+
+```csharp
+// Order system with synthetic key
+public class Order
+{
+    public string Id { get; set; }
+    public string CustomerId { get; set; }
+    public DateTime OrderDate { get; set; }
+    
+    // Combine customer + year for bounded partition growth
+    public string PartitionKey => $"{CustomerId}_{OrderDate:yyyy}";
+}
+```
+
+Reference: [Synthetic partition keys](https://learn.microsoft.com/azure/cosmos-db/nosql/synthetic-partition-keys)
 
 ---
 
@@ -301,69 +1409,537 @@ Design to stay under 20GB per partition key value.
 
 **Impact: HIGH**
 
-Optimized queries minimize RU consumption and latency.
-
 ### 3.1 Minimize Cross-Partition Queries
 
-**Impact: HIGH (reduces RU by 5-100x)**
+**Impact: HIGH** (reduces RU by 5-100x)
 
-Always include partition key in WHERE clause.
+## Minimize Cross-Partition Queries
 
-```csharp
-var options = new QueryRequestOptions { PartitionKey = new PartitionKey(customerId) };
-```
+Always include partition key in queries when possible. Cross-partition queries fan out to all partitions, consuming RU proportional to partition count.
 
-### 3.2 Project Only Needed Fields
-
-**Impact: HIGH (reduces RU and network by 30-80%)**
-
-Select specific fields, not `SELECT *`.
+**Incorrect (cross-partition fan-out):**
 
 ```csharp
-"SELECT c.id, c.name, c.status FROM c"
+// Missing partition key - scans ALL partitions
+var query = new QueryDefinition("SELECT * FROM c WHERE c.status = @status")
+    .WithParameter("@status", "active");
+
+var iterator = container.GetItemQueryIterator<Order>(query);
+// If you have 100 physical partitions, this runs 100 queries!
+// RU cost = single partition cost × number of partitions
 ```
 
-### 3.3 Use Continuation Tokens for Pagination
-
-**Impact: HIGH (enables efficient large result sets)**
-
-Never use OFFSET/LIMIT for deep pagination.
+**Correct (single-partition query):**
 
 ```csharp
-var iterator = container.GetItemQueryIterator<T>(query, continuationToken: token);
+// Include partition key for single-partition query
+var query = new QueryDefinition(
+    "SELECT * FROM c WHERE c.customerId = @customerId AND c.status = @status")
+    .WithParameter("@customerId", customerId)
+    .WithParameter("@status", "active");
+
+var iterator = container.GetItemQueryIterator<Order>(
+    query,
+    requestOptions: new QueryRequestOptions
+    {
+        PartitionKey = new PartitionKey(customerId)  // Single partition!
+    });
+// Runs against ONE partition only
+// Dramatically lower RU and latency
 ```
-
-### 3.4 Avoid Full Container Scans
-
-**Impact: HIGH (prevents unbounded RU consumption)**
-
-Ensure queries use indexes.
-
-**Incorrect:**
 
 ```csharp
-"SELECT * FROM c WHERE LOWER(c.email) = 'test@example.com'"  // Function prevents index use
-```
+// When cross-partition is unavoidable, optimize parallelism
+var query = new QueryDefinition("SELECT * FROM c WHERE c.status = @status")
+    .WithParameter("@status", "active");
 
-**Correct:**
+var options = new QueryRequestOptions
+{
+    MaxConcurrency = -1,  // Maximum parallelism
+    MaxBufferedItemCount = 100,  // Buffer for smoother streaming
+    MaxItemCount = 100  // Items per page
+};
+
+var iterator = container.GetItemQueryIterator<Order>(query, requestOptions: options);
+
+// Stream results efficiently
+await foreach (var item in iterator)
+{
+    ProcessItem(item);
+}
+```
 
 ```csharp
-"SELECT * FROM c WHERE c.emailLower = 'test@example.com'"  // Pre-computed, indexed
+// Use GetItemLinqQueryable with partition key
+var results = container.GetItemLinqQueryable<Order>(
+    requestOptions: new QueryRequestOptions 
+    { 
+        PartitionKey = new PartitionKey(customerId) 
+    })
+    .Where(o => o.Status == "active")
+    .ToFeedIterator();
 ```
+
+Strategies to avoid cross-partition:
+1. Include partition key in WHERE clause
+2. Denormalize data to colocate in same partition
+3. Create secondary containers with different partition keys for different access patterns
+
+Reference: [Query patterns](https://learn.microsoft.com/azure/cosmos-db/nosql/query/getting-started)
+
+### 3.2 Avoid Full Container Scans
+
+**Impact: HIGH** (prevents unbounded RU consumption)
+
+## Avoid Full Container Scans
+
+Ensure queries can use indexes to filter data. Queries that can't use indexes scan entire partitions or containers.
+
+**Incorrect (queries that cause scans):**
+
+```csharp
+// Functions on properties prevent index usage
+var query = "SELECT * FROM c WHERE LOWER(c.email) = 'john@example.com'";
+// Full scan! Index stores 'John@example.com', not lowercased
+
+// CONTAINS without index
+var query2 = "SELECT * FROM c WHERE CONTAINS(c.description, 'azure')";
+// No full-text index = full scan
+
+// NOT operations
+var query3 = "SELECT * FROM c WHERE NOT c.status = 'completed'";
+// Often causes scan (depends on index configuration)
+
+// Type checking
+var query4 = "SELECT * FROM c WHERE IS_STRING(c.name)";
+// Schema checking = full scan
+
+// OR with different properties (in some cases)
+var query5 = "SELECT * FROM c WHERE c.firstName = 'John' OR c.lastName = 'Smith'";
+// May scan if indexes can't be combined efficiently
+```
+
+**Correct (index-friendly queries):**
+
+```csharp
+// Store normalized data to avoid functions
+public class User
+{
+    public string Email { get; set; }
+    public string EmailLower { get; set; }  // Pre-computed lowercase
+}
+
+var query = "SELECT * FROM c WHERE c.emailLower = 'john@example.com'";
+// Uses index directly!
+
+// Use range operators that leverage indexes
+var query2 = @"
+    SELECT * FROM c 
+    WHERE c.createdAt >= @start 
+    AND c.createdAt < @end";
+// Range index on createdAt
+
+// Prefer equality and range over NOT
+var query3 = @"
+    SELECT * FROM c 
+    WHERE c.status IN ('pending', 'processing', 'shipped')";
+// Instead of NOT = 'completed'
+
+// Use StartsWith for prefix matching (uses index)
+var query4 = "SELECT * FROM c WHERE STARTSWITH(c.name, 'John')";
+// Uses range index on name
+
+// Split OR into UNION if needed for large datasets
+// Or ensure composite indexes cover both paths
+```
+
+```csharp
+// Check if query uses index with query metrics
+var options = new QueryRequestOptions
+{
+    PopulateIndexMetrics = true,
+    PartitionKey = new PartitionKey(partitionKey)
+};
+
+var iterator = container.GetItemQueryIterator<Product>(query, requestOptions: options);
+var response = await iterator.ReadNextAsync();
+
+// Check index metrics in diagnostics
+Console.WriteLine($"Index Hit: {response.Diagnostics}");
+// Look for "IndexLookupTime" vs "ScanTime"
+```
+
+Reference: [Query optimization](https://learn.microsoft.com/azure/cosmos-db/nosql/query-metrics)
+
+### 3.3 Order Filters by Selectivity
+
+**Impact: MEDIUM** (reduces intermediate result sets)
+
+## Order Filters by Selectivity
+
+Place most selective filters first in WHERE clauses. The query engine processes filters left-to-right, so selective filters early reduce data scanned.
+
+**Incorrect (least selective filter first):**
+
+```csharp
+// Status has low selectivity (few unique values)
+// Filters 1M items to 300K, then to 100
+var query = @"
+    SELECT * FROM c 
+    WHERE c.status = 'active'        -- 30% of items match
+    AND c.type = 'order'             -- 10% of items match
+    AND c.customerId = @customerId"; -- 0.01% match (highly selective)
+
+// Processes: 1M → 300K → 100K → 100
+// More intermediate processing than necessary
+```
+
+**Correct (most selective filter first):**
+
+```csharp
+// CustomerId is highly selective (unique per customer)
+var query = @"
+    SELECT * FROM c 
+    WHERE c.customerId = @customerId  -- 0.01% match (filter first!)
+    AND c.type = 'order'              -- Then narrow by type
+    AND c.status = 'active'";         -- Finally by status
+
+// Processes: 1M → 1K → 100 → 100
+// Much less intermediate data
+```
+
+```csharp
+// Selectivity guidelines (from most to least selective):
+// 1. Unique identifiers: id, customerId, orderId (highest)
+// 2. Foreign keys with many values: productId, userId
+// 3. Timestamps (range queries): createdAt, modifiedAt
+// 4. Categories with many values: categoryId, departmentId
+// 5. Status fields: status, state (low selectivity)
+// 6. Boolean flags: isActive, isDeleted (lowest - only 2 values)
+
+// Example: Combining timestamp with status
+var query = @"
+    SELECT * FROM c 
+    WHERE c.customerId = @customerId
+    AND c.orderDate >= @startDate
+    AND c.orderDate < @endDate
+    AND c.status = 'completed'";
+
+// Even better with composite index
+```
+
+```csharp
+// Use BETWEEN with high selectivity values
+var query = @"
+    SELECT * FROM c 
+    WHERE c.orderId >= @startId AND c.orderId <= @endId  -- Very selective range
+    AND c.status = 'active'";
+
+// For OR clauses, check if rewriting helps
+// Less efficient:
+var query1 = "SELECT * FROM c WHERE c.status = 'a' OR c.status = 'b' AND c.customerId = @id";
+// Better (explicit grouping):
+var query2 = "SELECT * FROM c WHERE (c.status = 'a' OR c.status = 'b') AND c.customerId = @id";
+// Best (if possible, use IN):
+var query3 = "SELECT * FROM c WHERE c.status IN ('a', 'b') AND c.customerId = @id";
+```
+
+Reference: [Query optimization tips](https://learn.microsoft.com/azure/cosmos-db/nosql/performance-tips-query-sdk)
+
+### 3.4 Use Continuation Tokens for Pagination
+
+**Impact: HIGH** (enables efficient large result sets)
+
+## Use Continuation Tokens for Pagination
+
+Use continuation tokens to paginate through large result sets efficiently. Never use OFFSET/LIMIT for deep pagination.
+
+**Incorrect (OFFSET/LIMIT for pagination):**
+
+```csharp
+// Anti-pattern: OFFSET increases cost linearly with page number
+public async Task<List<Product>> GetProductsPage(int page, int pageSize)
+{
+    // Page 1: Skip 0, Page 100: Skip 9900
+    var offset = (page - 1) * pageSize;
+    
+    // OFFSET must scan and discard all previous items!
+    var query = $"SELECT * FROM c ORDER BY c.name OFFSET {offset} LIMIT {pageSize}";
+    
+    var results = await container.GetItemQueryIterator<Product>(query).ReadNextAsync();
+    return results.ToList();
+    
+    // Page 1: Scans 100 items
+    // Page 100: Scans 10,000 items, returns 100
+    // RU cost grows linearly with page depth!
+}
+```
+
+**Correct (continuation token pagination):**
+
+```csharp
+public class PagedResult<T>
+{
+    public List<T> Items { get; set; }
+    public string ContinuationToken { get; set; }
+    public bool HasMore => !string.IsNullOrEmpty(ContinuationToken);
+}
+
+public async Task<PagedResult<Product>> GetProductsPage(
+    int pageSize, 
+    string continuationToken = null)
+{
+    var query = new QueryDefinition("SELECT * FROM c ORDER BY c.name");
+    
+    var options = new QueryRequestOptions
+    {
+        MaxItemCount = pageSize  // Items per page
+    };
+    
+    var iterator = container.GetItemQueryIterator<Product>(
+        query,
+        continuationToken: continuationToken,  // Resume from last position
+        requestOptions: options);
+    
+    var response = await iterator.ReadNextAsync();
+    
+    return new PagedResult<Product>
+    {
+        Items = response.ToList(),
+        ContinuationToken = response.ContinuationToken  // For next page
+    };
+    
+    // Every page costs the same RU regardless of depth!
+}
+
+// Usage in API
+[HttpGet("products")]
+public async Task<IActionResult> GetProducts(
+    [FromQuery] int pageSize = 20,
+    [FromQuery] string continuationToken = null)
+{
+    // Decode token if passed as query param (URL-safe encoding)
+    var token = continuationToken != null 
+        ? Encoding.UTF8.GetString(Convert.FromBase64String(continuationToken))
+        : null;
+    
+    var result = await GetProductsPage(pageSize, token);
+    
+    // Encode token for URL safety
+    var nextToken = result.ContinuationToken != null
+        ? Convert.ToBase64String(Encoding.UTF8.GetBytes(result.ContinuationToken))
+        : null;
+    
+    return Ok(new { result.Items, NextPage = nextToken });
+}
+```
+
+```csharp
+// Streaming through all results
+public async IAsyncEnumerable<Product> GetAllProducts()
+{
+    string continuationToken = null;
+    
+    do
+    {
+        var page = await GetProductsPage(100, continuationToken);
+        
+        foreach (var product in page.Items)
+        {
+            yield return product;
+        }
+        
+        continuationToken = page.ContinuationToken;
+    }
+    while (continuationToken != null);
+}
+```
+
+Reference: [Pagination in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/query/pagination)
 
 ### 3.5 Use Parameterized Queries
 
-**Impact: MEDIUM (improves security and caching)**
+**Impact: MEDIUM** (improves security and query plan caching)
+
+## Use Parameterized Queries
+
+Always use parameterized queries instead of string concatenation. This prevents injection attacks and enables query plan caching.
+
+**Incorrect (string concatenation):**
 
 ```csharp
-new QueryDefinition("SELECT * FROM c WHERE c.id = @id").WithParameter("@id", id)
+// SQL injection vulnerability!
+public async Task<User> GetUser(string userId)
+{
+    // NEVER DO THIS - vulnerable to injection
+    var query = $"SELECT * FROM c WHERE c.userId = '{userId}'";
+    
+    // Attacker input: "' OR '1'='1"
+    // Results in: SELECT * FROM c WHERE c.userId = '' OR '1'='1'
+    // Returns ALL users!
+    
+    var iterator = container.GetItemQueryIterator<User>(query);
+    return (await iterator.ReadNextAsync()).FirstOrDefault();
+}
+
+// Also prevents query plan caching
+// Each unique query string = new compilation
+var query1 = "SELECT * FROM c WHERE c.userId = 'user1'";
+var query2 = "SELECT * FROM c WHERE c.userId = 'user2'";
+// Two different query plans compiled!
 ```
 
-### 3.6 Order Filters by Selectivity
+**Correct (parameterized queries):**
 
-**Impact: MEDIUM (reduces intermediate result sets)**
+```csharp
+public async Task<User> GetUser(string userId)
+{
+    var query = new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId")
+        .WithParameter("@userId", userId);
+    
+    // Injection attempt becomes literal string comparison
+    // Attacker input "' OR '1'='1" just searches for that literal value
+    
+    var iterator = container.GetItemQueryIterator<User>(query);
+    return (await iterator.ReadNextAsync()).FirstOrDefault();
+}
 
-Place most selective filters first.
+// Query plan is cached and reused
+var query1 = new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId")
+    .WithParameter("@userId", "user1");
+var query2 = new QueryDefinition("SELECT * FROM c WHERE c.userId = @userId")
+    .WithParameter("@userId", "user2");
+// Same query plan reused!
+```
+
+```csharp
+// Multiple parameters
+var query = new QueryDefinition(@"
+    SELECT * FROM c 
+    WHERE c.customerId = @customerId 
+    AND c.status = @status
+    AND c.orderDate >= @startDate")
+    .WithParameter("@customerId", customerId)
+    .WithParameter("@status", "active")
+    .WithParameter("@startDate", startDate);
+
+// Array parameter for IN clauses
+var statuses = new[] { "pending", "processing", "shipped" };
+var query2 = new QueryDefinition(
+    "SELECT * FROM c WHERE ARRAY_CONTAINS(@statuses, c.status)")
+    .WithParameter("@statuses", statuses);
+```
+
+```csharp
+// LINQ (automatically parameterized)
+var results = container.GetItemLinqQueryable<Order>()
+    .Where(o => o.CustomerId == customerId && o.Status == status)
+    .ToFeedIterator();
+// SDK handles parameterization automatically
+```
+
+Benefits:
+- Security: Prevents SQL injection
+- Performance: Query plan caching and reuse
+- Maintainability: Cleaner, type-safe code
+
+Reference: [Parameterized queries](https://learn.microsoft.com/azure/cosmos-db/nosql/query/parameterized-queries)
+
+### 3.6 Project Only Needed Fields
+
+**Impact: HIGH** (reduces RU and network by 30-80%)
+
+## Project Only Needed Fields
+
+Select only the fields you need rather than returning entire documents. Reduces both RU consumption and network bandwidth.
+
+**Incorrect (selecting entire document):**
+
+```csharp
+// Selecting everything when you only need a few fields
+var query = "SELECT * FROM c WHERE c.customerId = @customerId";
+
+// Returns all fields including:
+// - Large text content
+// - Arrays with hundreds of items
+// - Fields you'll never use
+var orders = await container.GetItemQueryIterator<Order>(
+    new QueryDefinition(query).WithParameter("@customerId", customerId),
+    requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(customerId) }
+).ReadNextAsync();
+
+// UI only shows: orderId, orderDate, total
+// But you transferred and deserialized everything!
+```
+
+**Correct (projecting specific fields):**
+
+```csharp
+// Project only what's needed
+var query = @"
+    SELECT 
+        c.id,
+        c.orderDate,
+        c.total,
+        c.status
+    FROM c 
+    WHERE c.customerId = @customerId";
+
+public class OrderSummary
+{
+    public string Id { get; set; }
+    public DateTime OrderDate { get; set; }
+    public decimal Total { get; set; }
+    public string Status { get; set; }
+}
+
+var orders = await container.GetItemQueryIterator<OrderSummary>(
+    new QueryDefinition(query).WithParameter("@customerId", customerId),
+    requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(customerId) }
+).ReadNextAsync();
+
+// 70% less data transferred, proportionally lower RU
+```
+
+```csharp
+// For nested objects, project specific paths
+var query = @"
+    SELECT 
+        c.id,
+        c.customer.name AS customerName,
+        c.items[0].productName AS firstProduct,
+        ARRAY_LENGTH(c.items) AS itemCount
+    FROM c";
+
+// Even more efficient: VALUE for single field
+var query2 = "SELECT VALUE c.email FROM c WHERE c.type = 'customer'";
+var emails = await container.GetItemQueryIterator<string>(query2).ReadNextAsync();
+```
+
+```csharp
+// LINQ projection
+var orderSummaries = container.GetItemLinqQueryable<Order>(
+    requestOptions: new QueryRequestOptions 
+    { 
+        PartitionKey = new PartitionKey(customerId) 
+    })
+    .Where(o => o.CustomerId == customerId)
+    .Select(o => new OrderSummary
+    {
+        Id = o.Id,
+        OrderDate = o.OrderDate,
+        Total = o.Total,
+        Status = o.Status
+    })
+    .ToFeedIterator();
+```
+
+Savings multiply with:
+- Large documents (MB-sized)
+- Large result sets
+- High query frequency
+
+Reference: [Project fields in queries](https://learn.microsoft.com/azure/cosmos-db/nosql/query/select)
 
 ---
 
@@ -371,60 +1947,667 @@ Place most selective filters first.
 
 **Impact: HIGH**
 
-Proper SDK usage ensures connection efficiency and optimal throughput.
+### 4.1 Use Async APIs for Better Throughput
 
-### 4.1 Reuse CosmosClient as Singleton
+**Impact: HIGH** (improves concurrency 10-100x)
 
-**Impact: CRITICAL (prevents connection exhaustion)**
+## Use Async APIs for Better Throughput
 
-Create once, reuse throughout application lifetime.
+Always use async/await patterns for Cosmos DB operations. Synchronous calls block threads and severely limit throughput under load.
 
-```csharp
-services.AddSingleton<CosmosClient>(sp => new CosmosClient(connectionString, options));
-```
-
-### 4.2 Use Async APIs for Better Throughput
-
-**Impact: HIGH (improves concurrency 10-100x)**
-
-Never use `.Result` or `.Wait()`.
+**Incorrect (blocking synchronous calls):**
 
 ```csharp
-var response = await container.ReadItemAsync<Order>(id, pk);
+// Anti-pattern: Blocking async code
+public Order GetOrder(string orderId, string customerId)
+{
+    // .Result blocks the calling thread!
+    var response = _container.ReadItemAsync<Order>(
+        orderId, 
+        new PartitionKey(customerId)).Result;
+    
+    return response.Resource;
+}
+
+// Or using .Wait()
+public void UpdateOrder(Order order)
+{
+    _container.UpsertItemAsync(order, new PartitionKey(order.CustomerId)).Wait();
+}
+
+// Problems:
+// - Thread pool exhaustion under load
+// - Potential deadlocks in ASP.NET
+// - Cannot scale to handle concurrent requests
+// - 100 concurrent requests = 100 blocked threads
 ```
 
-### 4.3 Handle 429 Errors with Retry-After
-
-**Impact: HIGH (prevents cascading failures)**
-
-Configure SDK retry settings.
+**Correct (fully async):**
 
 ```csharp
-MaxRetryAttemptsOnRateLimitedRequests = 9,
-MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30)
+public async Task<Order> GetOrderAsync(string orderId, string customerId)
+{
+    var response = await _container.ReadItemAsync<Order>(
+        orderId, 
+        new PartitionKey(customerId));
+    
+    return response.Resource;
+}
+
+public async Task UpdateOrderAsync(Order order)
+{
+    await _container.UpsertItemAsync(order, new PartitionKey(order.CustomerId));
+}
+
+// Async all the way up the call stack
+public async Task<IActionResult> GetOrder(string id, string customerId)
+{
+    var order = await _orderRepository.GetOrderAsync(id, customerId);
+    return Ok(order);
+}
 ```
-
-### 4.4 Use Direct Connection Mode for Production
-
-**Impact: HIGH (reduces latency by 30-50%)**
 
 ```csharp
-ConnectionMode = ConnectionMode.Direct
+// Concurrent operations with Task.WhenAll
+public async Task<OrderWithItems> GetOrderWithItemsAsync(string orderId, string customerId)
+{
+    // Start both operations concurrently
+    var orderTask = _container.ReadItemAsync<Order>(
+        orderId, new PartitionKey(customerId));
+    
+    var itemsTask = _container.GetItemQueryIterator<OrderItem>(
+        new QueryDefinition("SELECT * FROM c WHERE c.orderId = @orderId")
+            .WithParameter("@orderId", orderId),
+        requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(customerId) }
+    ).ReadNextAsync();
+    
+    // Wait for both to complete
+    await Task.WhenAll(orderTask, itemsTask);
+    
+    return new OrderWithItems
+    {
+        Order = orderTask.Result.Resource,
+        Items = itemsTask.Result.ToList()
+    };
+    // Total time ≈ max(order time, items time) instead of sum
+}
 ```
-
-### 4.5 Configure Preferred Regions for Availability
-
-**Impact: HIGH (enables automatic failover)**
 
 ```csharp
-ApplicationPreferredRegions = new List<string> { Regions.WestUS2, Regions.EastUS2 }
+// Bulk operations with async streaming
+public async Task<int> ImportProductsAsync(IAsyncEnumerable<Product> products)
+{
+    var count = 0;
+    var tasks = new List<Task>();
+    
+    await foreach (var product in products)
+    {
+        tasks.Add(_container.UpsertItemAsync(product, new PartitionKey(product.CategoryId)));
+        count++;
+        
+        // Limit concurrent operations to avoid overwhelming the client
+        if (tasks.Count >= 100)
+        {
+            await Task.WhenAll(tasks);
+            tasks.Clear();
+        }
+    }
+    
+    await Task.WhenAll(tasks);  // Complete remaining
+    return count;
+}
 ```
 
-### 4.6 Log Diagnostics for Troubleshooting
+Reference: [Async programming best practices](https://learn.microsoft.com/azure/cosmos-db/nosql/best-practice-dotnet#use-async-methods)
 
-**Impact: MEDIUM (enables root cause analysis)**
+### 4.2 Use Direct Connection Mode for Production
 
-Capture diagnostics for slow or failed operations.
+**Impact: HIGH** (reduces latency by 30-50%)
+
+## Use Direct Connection Mode for Production
+
+Use Direct connection mode for production workloads. Gateway mode adds an extra network hop and is only needed for firewall-restricted environments.
+
+**Incorrect (defaulting to Gateway mode):**
+
+```csharp
+// Gateway mode adds extra hop through Azure gateway
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConnectionMode = ConnectionMode.Gateway  // Extra network hop!
+});
+
+// Request path:
+// Client → Azure Gateway → Cosmos DB partition
+// Extra latency: 2-10ms per request
+```
+
+**Correct (Direct mode for production):**
+
+```csharp
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    // Direct mode connects straight to backend partitions
+    ConnectionMode = ConnectionMode.Direct,
+    
+    // Protocol.Tcp for best performance (default in Direct mode)
+    // Uses persistent connections
+    
+    // Configure connection limits for high throughput
+    MaxRequestsPerTcpConnection = 30,
+    MaxTcpConnectionsPerEndpoint = 65535,
+    
+    // Idle connection timeout
+    IdleTcpConnectionTimeout = TimeSpan.FromMinutes(10),
+    
+    // Enable connection recovery
+    EnableTcpConnectionEndpointRediscovery = true
+});
+
+// Request path:
+// Client → Cosmos DB partition directly
+// Lower latency, higher throughput
+```
+
+```csharp
+// When to use Gateway mode (exceptions):
+var gatewayClient = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    // Use Gateway when:
+    // 1. Corporate firewall blocks TCP port range 10000-20000
+    // 2. Running in Azure Functions Consumption plan (sometimes)
+    // 3. Kubernetes with restrictive network policies
+    ConnectionMode = ConnectionMode.Gateway
+});
+```
+
+```csharp
+// Complete production configuration
+var productionClient = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ApplicationName = "MyProductionApp",
+    ConnectionMode = ConnectionMode.Direct,
+    
+    // Retry configuration
+    MaxRetryAttemptsOnRateLimitedRequests = 9,
+    MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30),
+    
+    // Connection management
+    MaxRequestsPerTcpConnection = 30,
+    MaxTcpConnectionsPerEndpoint = 65535,
+    PortReuseMode = PortReuseMode.PrivatePortPool,
+    
+    // Serialization (optional optimization)
+    SerializerOptions = new CosmosSerializationOptions
+    {
+        PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase,
+        IgnoreNullValues = true
+    },
+    
+    // Consistency (if different from account default)
+    ConsistencyLevel = ConsistencyLevel.Session
+});
+```
+
+Required firewall ports for Direct mode:
+- TCP 443 (control plane)
+- TCP 10000-20000 (data plane)
+
+Reference: [Direct vs Gateway connection modes](https://learn.microsoft.com/azure/cosmos-db/nosql/sdk-connection-modes)
+
+### 4.3 Log Diagnostics for Troubleshooting
+
+**Impact: MEDIUM** (enables root cause analysis)
+
+## Log Diagnostics for Troubleshooting
+
+Capture and log diagnostics from Cosmos DB responses, especially for slow or failed operations. Diagnostics contain crucial information for troubleshooting.
+
+**Incorrect (ignoring diagnostics):**
+
+```csharp
+public async Task<Order> GetOrder(string orderId, string customerId)
+{
+    try
+    {
+        var response = await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+        return response.Resource;
+    }
+    catch (CosmosException ex)
+    {
+        // Only logging the message loses critical debugging info!
+        _logger.LogError("Failed to read order: {Message}", ex.Message);
+        throw;
+    }
+}
+```
+
+**Correct (logging diagnostics):**
+
+```csharp
+public async Task<Order> GetOrder(string orderId, string customerId)
+{
+    var response = await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+    
+    // Log diagnostics for slow operations
+    if (response.Diagnostics.GetClientElapsedTime() > TimeSpan.FromMilliseconds(100))
+    {
+        _logger.LogWarning(
+            "Slow Cosmos DB read: {ElapsedMs}ms, RU: {RU}, Diagnostics: {Diagnostics}",
+            response.Diagnostics.GetClientElapsedTime().TotalMilliseconds,
+            response.RequestCharge,
+            response.Diagnostics.ToString());
+    }
+    
+    return response.Resource;
+}
+
+// For all operations - track RU consumption
+public async Task<T> ExecuteWithDiagnostics<T>(
+    Func<Task<ItemResponse<T>>> operation,
+    string operationName)
+{
+    var stopwatch = Stopwatch.StartNew();
+    
+    try
+    {
+        var response = await operation();
+        stopwatch.Stop();
+        
+        // Always log RU for cost tracking
+        _logger.LogDebug(
+            "{Operation} completed: {ElapsedMs}ms, {RU} RU",
+            operationName,
+            stopwatch.ElapsedMilliseconds,
+            response.RequestCharge);
+        
+        // Log full diagnostics if slow or high RU
+        if (stopwatch.ElapsedMilliseconds > 100 || response.RequestCharge > 10)
+        {
+            _logger.LogInformation(
+                "{Operation} diagnostics: {Diagnostics}",
+                operationName,
+                response.Diagnostics.ToString());
+        }
+        
+        return response.Resource;
+    }
+    catch (CosmosException ex)
+    {
+        // CRITICAL: Always log diagnostics on failure!
+        _logger.LogError(ex,
+            "{Operation} failed: Status={Status}, RU={RU}, RetryAfter={RetryAfter}, Diagnostics={Diagnostics}",
+            operationName,
+            ex.StatusCode,
+            ex.RequestCharge,
+            ex.RetryAfter,
+            ex.Diagnostics?.ToString());
+        throw;
+    }
+}
+```
+
+```csharp
+// Query diagnostics with query metrics
+var queryOptions = new QueryRequestOptions
+{
+    PopulateIndexMetrics = true,  // Index usage info
+    MaxItemCount = 100
+};
+
+var iterator = _container.GetItemQueryIterator<Order>(query, requestOptions: queryOptions);
+var response = await iterator.ReadNextAsync();
+
+_logger.LogInformation(
+    "Query completed: {ItemCount} items, {RU} RU, IndexMetrics: {IndexMetrics}",
+    response.Count,
+    response.RequestCharge,
+    response.IndexMetrics);
+// IndexMetrics shows which indexes were used/not used
+```
+
+Key diagnostic fields:
+- `GetClientElapsedTime()`: Total client-side time
+- `RequestCharge`: RU consumed
+- Server response time, regions contacted
+- Retry information
+- Connection information
+
+Reference: [Capture diagnostics](https://learn.microsoft.com/azure/cosmos-db/nosql/troubleshoot-dotnet-sdk)
+
+### 4.4 Configure Preferred Regions for Availability
+
+**Impact: HIGH** (enables automatic failover, reduces latency)
+
+## Configure Preferred Regions for Availability
+
+Configure preferred regions in priority order for multi-region deployments. The SDK automatically routes to available regions during outages.
+
+**Incorrect (no region configuration):**
+
+```csharp
+// No region preference - SDK uses account's default write region
+var client = new CosmosClient(connectionString);
+
+// Problems:
+// - May route to distant region (high latency)
+// - No automatic failover if region goes down
+// - Unpredictable behavior during partial outages
+```
+
+**Correct (explicit region configuration):**
+
+```csharp
+// Configure preferred regions in order of preference
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ApplicationName = "MyApp",
+    
+    // SDK tries regions in order until one succeeds
+    ApplicationPreferredRegions = new List<string>
+    {
+        Regions.WestUS2,      // Primary (closest to users)
+        Regions.EastUS2,      // Secondary (nearby)
+        Regions.WestEurope    // Tertiary (disaster recovery)
+    }
+});
+
+// SDK automatically:
+// 1. Connects to first available region in list
+// 2. Fails over to next region if current becomes unavailable
+// 3. Fails back when preferred region recovers
+```
+
+```csharp
+// Dynamic region based on deployment
+public static CosmosClient CreateClient(string connectionString, string deploymentRegion)
+{
+    var preferredRegions = deploymentRegion switch
+    {
+        "westus" => new List<string> { Regions.WestUS2, Regions.EastUS2, Regions.WestEurope },
+        "eastus" => new List<string> { Regions.EastUS2, Regions.WestUS2, Regions.WestEurope },
+        "europe" => new List<string> { Regions.WestEurope, Regions.NorthEurope, Regions.EastUS2 },
+        _ => new List<string> { Regions.WestUS2 }
+    };
+    
+    return new CosmosClient(connectionString, new CosmosClientOptions
+    {
+        ApplicationPreferredRegions = preferredRegions
+    });
+}
+```
+
+```csharp
+// For multi-region writes, enable endpoint discovery
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ApplicationPreferredRegions = new List<string>
+    {
+        Regions.WestUS2,
+        Regions.EastUS2
+    },
+    
+    // Enable endpoint discovery for multi-region accounts
+    EnableTcpConnectionEndpointRediscovery = true,
+    
+    // For multi-region writes, writes can go to any region
+    // SDK handles routing automatically
+});
+```
+
+```csharp
+// Verify region routing in diagnostics
+var response = await container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+var diagnostics = response.Diagnostics.ToString();
+_logger.LogDebug("Request region info: {Diagnostics}", diagnostics);
+// Check contacted regions, failovers in diagnostics
+```
+
+Best practices:
+- List closest region first
+- Include at least 2 regions for redundancy
+- Match regions with your account's replicated regions
+- Use Azure region constants (Regions.WestUS2) for correctness
+
+Reference: [Configure preferred regions](https://learn.microsoft.com/azure/cosmos-db/nosql/tutorial-global-distribution)
+
+### 4.5 Handle 429 Errors with Retry-After
+
+**Impact: HIGH** (prevents cascading failures)
+
+## Handle 429 Errors with Retry-After
+
+Properly handle rate limiting (HTTP 429) responses by respecting the Retry-After header. The SDK handles this automatically, but configuration and logging are important.
+
+**Incorrect (ignoring or mishandling throttling):**
+
+```csharp
+// Anti-pattern: Retrying immediately without backoff
+public async Task<Order> GetOrderWithBadRetry(string orderId, string customerId)
+{
+    while (true)
+    {
+        try
+        {
+            return await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            // WRONG: Immediate retry makes throttling worse!
+            continue;
+        }
+    }
+}
+
+// Anti-pattern: Failing immediately on throttling
+public async Task<Order> GetOrderWithNoRetry(string orderId, string customerId)
+{
+    try
+    {
+        return await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+    }
+    catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+    {
+        // WRONG: Failing on transient error
+        throw new ApplicationException("Database unavailable");
+    }
+}
+```
+
+**Correct (leverage SDK's built-in retry):**
+
+```csharp
+// Configure client with appropriate retry settings
+var cosmosClient = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    // SDK automatically retries 429s up to this many times
+    MaxRetryAttemptsOnRateLimitedRequests = 9,
+    
+    // Maximum total wait time for retries
+    MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30),
+    
+    // Enable automatic retry (on by default)
+    EnableTcpConnectionEndpointRediscovery = true
+});
+
+// SDK handles 429 automatically with exponential backoff
+// respecting the Retry-After header from service
+public async Task<Order> GetOrderAsync(string orderId, string customerId)
+{
+    // No manual retry logic needed!
+    return await _container.ReadItemAsync<Order>(
+        orderId, 
+        new PartitionKey(customerId));
+}
+```
+
+```csharp
+// Log throttling for monitoring and capacity planning
+public async Task<Order> GetOrderWithDiagnostics(string orderId, string customerId)
+{
+    try
+    {
+        var response = await _container.ReadItemAsync<Order>(
+            orderId, 
+            new PartitionKey(customerId));
+        
+        // Log RU consumption for capacity planning
+        _logger.LogDebug("Read order {OrderId}: {RU} RU", orderId, response.RequestCharge);
+        
+        return response.Resource;
+    }
+    catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+    {
+        // This only fires if ALL retries exhausted
+        _logger.LogWarning(
+            "Throttled after all retries. RetryAfter: {RetryAfter}, Diagnostics: {Diagnostics}",
+            ex.RetryAfter,
+            ex.Diagnostics);
+        
+        throw;  // Let it bubble up - caller should handle
+    }
+}
+```
+
+```csharp
+// For bulk operations, use Bulk API with built-in throttling management
+var bulkOptions = new CosmosClientOptions
+{
+    AllowBulkExecution = true,
+    MaxRetryAttemptsOnRateLimitedRequests = 9,
+    MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(60)
+};
+
+var bulkClient = new CosmosClient(connectionString, bulkOptions);
+
+// Bulk upsert handles throttling automatically
+var tasks = items.Select(item => 
+    container.UpsertItemAsync(item, new PartitionKey(item.PartitionKey)));
+await Task.WhenAll(tasks);
+```
+
+Reference: [Handle rate limiting](https://learn.microsoft.com/azure/cosmos-db/nosql/troubleshoot-request-rate-too-large)
+
+### 4.6 Reuse CosmosClient as Singleton
+
+**Impact: CRITICAL** (prevents connection exhaustion)
+
+## Reuse CosmosClient as Singleton
+
+Create CosmosClient once and reuse it throughout the application lifetime. Creating multiple clients exhausts connections and wastes resources.
+
+**Incorrect (creating new client per request):**
+
+```csharp
+// Anti-pattern: New client per operation
+public class OrderRepository
+{
+    public async Task<Order> GetOrder(string orderId, string customerId)
+    {
+        // WRONG: Creates new client every call!
+        using var cosmosClient = new CosmosClient(connectionString);
+        var container = cosmosClient.GetContainer("db", "orders");
+        return await container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+    }
+    // Client disposed = connection closed
+    // Next call = new connection = TCP handshake + TLS negotiation
+}
+
+// Results in:
+// - Connection exhaustion under load
+// - High latency (connection setup per request)
+// - Memory leaks (connection pool not reused)
+// - Eventually: SocketException or timeout errors
+```
+
+**Correct (singleton client):**
+
+```csharp
+// Register as singleton in DI
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddCosmosDb(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddSingleton<CosmosClient>(sp =>
+        {
+            var connectionString = configuration["CosmosDb:ConnectionString"];
+            
+            return new CosmosClient(connectionString, new CosmosClientOptions
+            {
+                ApplicationName = "MyApp",
+                ConnectionMode = ConnectionMode.Direct,
+                MaxRetryAttemptsOnRateLimitedRequests = 9,
+                MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30)
+            });
+        });
+        
+        services.AddSingleton<IOrderRepository, OrderRepository>();
+        
+        return services;
+    }
+}
+
+// Repository uses injected singleton client
+public class OrderRepository : IOrderRepository
+{
+    private readonly Container _container;
+    
+    public OrderRepository(CosmosClient cosmosClient)
+    {
+        _container = cosmosClient.GetContainer("db", "orders");
+    }
+    
+    public async Task<Order> GetOrder(string orderId, string customerId)
+    {
+        return await _container.ReadItemAsync<Order>(
+            orderId, 
+            new PartitionKey(customerId));
+    }
+}
+```
+
+```csharp
+// For Azure Functions (using static initialization)
+public static class CosmosDbFunction
+{
+    private static readonly Lazy<CosmosClient> _lazyClient = new(() =>
+    {
+        var connectionString = Environment.GetEnvironmentVariable("CosmosDbConnection");
+        return new CosmosClient(connectionString);
+    });
+    
+    private static CosmosClient Client => _lazyClient.Value;
+    
+    [FunctionName("GetOrder")]
+    public static async Task<IActionResult> GetOrder(
+        [HttpTrigger(AuthorizationLevel.Function, "get")] HttpRequest req)
+    {
+        var container = Client.GetContainer("db", "orders");
+        // Client reused across all function invocations
+    }
+}
+```
+
+```csharp
+// Graceful shutdown (optional but recommended)
+public class CosmosDbHostedService : IHostedService
+{
+    private readonly CosmosClient _client;
+    
+    public CosmosDbHostedService(CosmosClient client) => _client = client;
+    
+    public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    
+    public async Task StopAsync(CancellationToken cancellationToken)
+    {
+        _client.Dispose();
+    }
+}
+```
+
+Reference: [CosmosClient best practices](https://learn.microsoft.com/azure/cosmos-db/nosql/best-practice-dotnet)
 
 ---
 
@@ -432,49 +2615,616 @@ Capture diagnostics for slow or failed operations.
 
 **Impact: MEDIUM-HIGH**
 
-Strategic indexing reduces query costs while minimizing write overhead.
+### 5.1 Use Composite Indexes for ORDER BY
 
-### 5.1 Exclude Unused Index Paths
+**Impact: HIGH** (enables sorted queries, reduces RU)
 
-**Impact: HIGH (reduces write RU by 20-80%)**
+## Use Composite Indexes for ORDER BY
+
+Create composite indexes for queries with ORDER BY on multiple properties. Without them, queries may fail or require expensive client-side sorting.
+
+**Incorrect (ORDER BY without composite index):**
 
 ```csharp
-ExcludedPaths = { new ExcludedPath { Path = "/largeArray/*" } }
+// Query with multi-property ORDER BY
+var query = @"
+    SELECT * FROM c 
+    WHERE c.status = 'active' 
+    ORDER BY c.createdAt DESC, c.priority ASC";
+
+// Without composite index, this may:
+// 1. Fail with: "Order-by item requires a corresponding composite index"
+// 2. Or consume excessive RU for sorting
 ```
 
-### 5.2 Use Composite Indexes for ORDER BY
-
-**Impact: HIGH (enables sorted queries)**
+**Correct (composite index for ORDER BY):**
 
 ```csharp
-CompositeIndexes = {
-    new Collection<CompositePath> {
-        new CompositePath { Path = "/status" },
-        new CompositePath { Path = "/createdAt", Order = Descending }
+// Create composite index matching the ORDER BY
+var indexingPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.Consistent,
+    
+    CompositeIndexes =
+    {
+        // Must match ORDER BY exactly (properties and sort order)
+        new Collection<CompositePath>
+        {
+            new CompositePath { Path = "/createdAt", Order = CompositePathSortOrder.Descending },
+            new CompositePath { Path = "/priority", Order = CompositePathSortOrder.Ascending }
+        },
+        
+        // Add reverse order for flexibility
+        new Collection<CompositePath>
+        {
+            new CompositePath { Path = "/createdAt", Order = CompositePathSortOrder.Ascending },
+            new CompositePath { Path = "/priority", Order = CompositePathSortOrder.Descending }
+        },
+        
+        // Common filter + sort pattern
+        new Collection<CompositePath>
+        {
+            new CompositePath { Path = "/status", Order = CompositePathSortOrder.Ascending },
+            new CompositePath { Path = "/createdAt", Order = CompositePathSortOrder.Descending }
+        }
     }
+};
+
+var containerProperties = new ContainerProperties
+{
+    Id = "tasks",
+    PartitionKeyPath = "/userId",
+    IndexingPolicy = indexingPolicy
+};
+```
+
+```json
+// JSON indexing policy with composite indexes
+{
+    "indexingMode": "consistent",
+    "automatic": true,
+    "includedPaths": [
+        { "path": "/*" }
+    ],
+    "compositeIndexes": [
+        [
+            { "path": "/status", "order": "ascending" },
+            { "path": "/createdAt", "order": "descending" }
+        ],
+        [
+            { "path": "/createdAt", "order": "descending" },
+            { "path": "/priority", "order": "ascending" }
+        ]
+    ]
 }
 ```
 
-### 5.3 Add Spatial Indexes for Geo Queries
+```csharp
+// Common patterns that need composite indexes:
 
-**Impact: MEDIUM-HIGH (enables efficient location queries)**
+// Pattern 1: Filter + Sort
+// WHERE status = 'x' ORDER BY date DESC
+new Collection<CompositePath>
+{
+    new CompositePath { Path = "/status", Order = CompositePathSortOrder.Ascending },
+    new CompositePath { Path = "/date", Order = CompositePathSortOrder.Descending }
+}
+
+// Pattern 2: Multi-column sort
+// ORDER BY lastName ASC, firstName ASC
+new Collection<CompositePath>
+{
+    new CompositePath { Path = "/lastName", Order = CompositePathSortOrder.Ascending },
+    new CompositePath { Path = "/firstName", Order = CompositePathSortOrder.Ascending }
+}
+
+// Pattern 3: Range + Sort
+// WHERE price >= 10 ORDER BY rating DESC
+new Collection<CompositePath>
+{
+    new CompositePath { Path = "/price", Order = CompositePathSortOrder.Ascending },
+    new CompositePath { Path = "/rating", Order = CompositePathSortOrder.Descending }
+}
+```
+
+Rules:
+- Composite index order must match ORDER BY exactly
+- First path can be equality filter
+- Include both ASC/DESC variants for flexibility
+- Maximum 8 paths per composite index
+
+Reference: [Composite indexes](https://learn.microsoft.com/azure/cosmos-db/index-policy#composite-indexes)
+
+### 5.2 Exclude Unused Index Paths
+
+**Impact: HIGH** (reduces write RU by 20-80%)
+
+## Exclude Unused Index Paths
+
+Exclude paths from indexing that you never query. Every indexed path adds write cost with no read benefit.
+
+**Incorrect (indexing everything):**
 
 ```csharp
-SpatialIndexes = { new SpatialPath { Path = "/location/?", SpatialTypes = { SpatialType.Point } } }
+// Default indexing policy indexes ALL paths
+// Great for flexibility, expensive for writes
+{
+    "indexingMode": "consistent",
+    "automatic": true,
+    "includedPaths": [
+        {
+            "path": "/*"  // Indexes everything including unused fields
+        }
+    ],
+    "excludedPaths": []
+}
+
+// Document with large unused fields gets indexed unnecessarily
+{
+    "id": "order-123",
+    "customerId": "cust-1",          // Queried
+    "status": "shipped",             // Queried
+    "items": [...],                  // Not queried
+    "internalNotes": "...",          // Not queried
+    "auditLog": [...]                // Large array, never queried!
+}
+// Write cost includes indexing auditLog array - wasted RU
 ```
+
+**Correct (selective indexing):**
+
+```csharp
+// Include only queried paths
+var indexingPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.Consistent,
+    Automatic = true,
+    
+    // Only include paths you actually query
+    IncludedPaths =
+    {
+        new IncludedPath { Path = "/customerId/?" },
+        new IncludedPath { Path = "/status/?" },
+        new IncludedPath { Path = "/orderDate/?" },
+        new IncludedPath { Path = "/total/?" }
+    },
+    
+    // Exclude everything else (especially large arrays)
+    ExcludedPaths =
+    {
+        new ExcludedPath { Path = "/items/*" },         // Embedded array
+        new ExcludedPath { Path = "/internalNotes/?" },
+        new ExcludedPath { Path = "/auditLog/*" },      // Large array
+        new ExcludedPath { Path = "/_etag/?" }          // System field
+    }
+};
+
+var containerProperties = new ContainerProperties
+{
+    Id = "orders",
+    PartitionKeyPath = "/customerId",
+    IndexingPolicy = indexingPolicy
+};
+```
+
+```json
+// JSON equivalent indexing policy
+{
+    "indexingMode": "consistent",
+    "automatic": true,
+    "includedPaths": [
+        { "path": "/customerId/?" },
+        { "path": "/status/?" },
+        { "path": "/orderDate/?" }
+    ],
+    "excludedPaths": [
+        { "path": "/items/*" },
+        { "path": "/auditLog/*" },
+        { "path": "/*" }  // Exclude all other paths
+    ]
+}
+```
+
+```csharp
+// Alternative: exclude all, include specific
+var indexingPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.Consistent,
+    
+    // Start with exclude all
+    ExcludedPaths = { new ExcludedPath { Path = "/*" } },
+    
+    // Explicitly include only what you query
+    IncludedPaths =
+    {
+        new IncludedPath { Path = "/customerId/?" },
+        new IncludedPath { Path = "/orderDate/?" }
+    }
+};
+```
+
+Monitor and adjust:
+- Review query patterns periodically
+- Use Query Stats to see index utilization
+- Balance write cost reduction vs query flexibility
+
+Reference: [Indexing policies](https://learn.microsoft.com/azure/cosmos-db/index-policy)
+
+### 5.3 Understand Indexing Modes
+
+**Impact: MEDIUM** (balances write speed vs query consistency)
+
+## Understand Indexing Modes
+
+Choose the appropriate indexing mode based on your workload. Consistent mode ensures query results are current; None disables indexing entirely.
+
+**Indexing modes explained:**
+
+```csharp
+// CONSISTENT MODE (Default - recommended for most cases)
+// Indexes are updated synchronously with writes
+// Queries always see latest data
+var consistentPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.Consistent,  // Default
+    Automatic = true
+};
+
+// Benefits:
+// - Query results are always up-to-date
+// - Strong consistency between writes and reads
+// Tradeoffs:
+// - Write latency includes index update time
+```
+
+```csharp
+// NONE MODE (Write-only containers)
+// No automatic indexing - fastest writes
+// Only point reads work (by id + partition key)
+var nonePolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.None,
+    Automatic = false
+};
+
+// Use cases:
+// - Pure key-value store (only point reads)
+// - High-volume write ingestion
+// - Time-series data queried via external system (Synapse Link)
+```
+
+**Correct (choosing mode based on workload):**
+
+```csharp
+// Typical transactional workload - use Consistent
+var ordersPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.Consistent,
+    Automatic = true,
+    IncludedPaths = { new IncludedPath { Path = "/*" } }
+};
+
+var ordersContainer = new ContainerProperties
+{
+    Id = "orders",
+    PartitionKeyPath = "/customerId",
+    IndexingPolicy = ordersPolicy
+};
+// Queries immediately see new orders
+```
+
+```csharp
+// High-volume telemetry ingestion - consider None
+var telemetryPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.None,  // Maximum write throughput
+    Automatic = false
+};
+
+var telemetryContainer = new ContainerProperties
+{
+    Id = "telemetry",
+    PartitionKeyPath = "/deviceId",
+    IndexingPolicy = telemetryPolicy,
+    
+    // Enable analytical store for querying via Synapse
+    AnalyticalStorageTimeToLiveInSeconds = -1
+};
+
+// Point reads still work
+var reading = await container.ReadItemAsync<Telemetry>(
+    readingId, new PartitionKey(deviceId));
+
+// Complex queries via Synapse Link (analytical store)
+// No indexing overhead on transactional writes
+```
+
+```csharp
+// Selective indexing - best of both worlds
+var hybridPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.Consistent,
+    Automatic = true,
+    
+    // Only index fields you query
+    IncludedPaths =
+    {
+        new IncludedPath { Path = "/customerId/?" },
+        new IncludedPath { Path = "/orderDate/?" }
+    },
+    ExcludedPaths =
+    {
+        new ExcludedPath { Path = "/*" }  // Exclude everything else
+    }
+};
+// Fast writes (minimal indexing) + efficient queries (on indexed paths)
+```
+
+Decision guide:
+- **Consistent**: Default, transactional workloads, need queries
+- **None**: Write-only, pure key-value, using Synapse Link for analytics
+
+Note: Lazy mode was deprecated - use Consistent instead.
+
+Reference: [Indexing modes](https://learn.microsoft.com/azure/cosmos-db/index-policy#indexing-mode)
 
 ### 5.4 Choose Appropriate Index Types
 
-**Impact: MEDIUM**
+**Impact: MEDIUM** (optimizes query performance)
 
-Range indexes (default) support equality, range, and ORDER BY.
+## Choose Appropriate Index Types
 
-### 5.5 Understand Indexing Modes
+Understand when to use different index types. Range indexes support equality, range, and ORDER BY; Hash indexes are deprecated.
 
-**Impact: MEDIUM**
+**Understanding index types:**
 
-- Consistent (default): Query results always current
-- None: Write-only, maximum throughput
+```csharp
+// Range Index (DEFAULT - recommended for most cases)
+// Supports: =, >, <, >=, <=, !=, ORDER BY, JOINs
+// Index entries: ["a"], ["a", "b"], ["a", "b", "c"]...
+{
+    "includedPaths": [
+        {
+            "path": "/price/?",
+            "indexes": [
+                {
+                    "kind": "Range",  // Default, most flexible
+                    "dataType": "Number",
+                    "precision": -1   // -1 = maximum precision
+                },
+                {
+                    "kind": "Range",
+                    "dataType": "String",
+                    "precision": -1
+                }
+            ]
+        }
+    ]
+}
+```
+
+**Correct (modern indexing approach):**
+
+```csharp
+// Modern Cosmos DB automatically uses optimal index types
+// You typically just specify paths, not index kinds
+var indexingPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.Consistent,
+    Automatic = true,
+    
+    // Just specify paths - Cosmos DB handles index types
+    IncludedPaths =
+    {
+        new IncludedPath { Path = "/category/?" },    // Equality queries
+        new IncludedPath { Path = "/price/?" },       // Range queries
+        new IncludedPath { Path = "/createdAt/?" },   // ORDER BY
+        new IncludedPath { Path = "/tags/*" }         // Array elements
+    },
+    
+    ExcludedPaths =
+    {
+        new ExcludedPath { Path = "/description/?" },  // Large text, not queried
+        new ExcludedPath { Path = "/metadata/*" }      // Nested object, not queried
+    }
+};
+```
+
+```csharp
+// For special query patterns, add composite or spatial indexes
+
+var indexingPolicy = new IndexingPolicy
+{
+    // Standard range indexes (automatic)
+    IncludedPaths =
+    {
+        new IncludedPath { Path = "/*" }  // Index everything by default
+    },
+    
+    // Composite indexes for multi-property ORDER BY
+    CompositeIndexes =
+    {
+        new Collection<CompositePath>
+        {
+            new CompositePath { Path = "/category", Order = CompositePathSortOrder.Ascending },
+            new CompositePath { Path = "/price", Order = CompositePathSortOrder.Descending }
+        }
+    },
+    
+    // Spatial indexes for geo queries
+    SpatialIndexes =
+    {
+        new SpatialPath
+        {
+            Path = "/location/?",
+            SpatialTypes = { SpatialType.Point }
+        }
+    }
+};
+```
+
+```json
+// JSON policy showing all index types
+{
+    "indexingMode": "consistent",
+    "automatic": true,
+    "includedPaths": [
+        { "path": "/*" }
+    ],
+    "excludedPaths": [
+        { "path": "/largeContent/?" }
+    ],
+    "compositeIndexes": [
+        [
+            { "path": "/status", "order": "ascending" },
+            { "path": "/createdAt", "order": "descending" }
+        ]
+    ],
+    "spatialIndexes": [
+        {
+            "path": "/location/?",
+            "types": ["Point"]
+        }
+    ]
+}
+```
+
+Index type summary:
+- **Range (default)**: Equality, range, ORDER BY - use for everything
+- **Composite**: Multi-property ORDER BY, filter+sort
+- **Spatial**: Geographic/geometric queries
+- **Hash**: DEPRECATED - don't use
+
+Reference: [Index types](https://learn.microsoft.com/azure/cosmos-db/index-overview)
+
+### 5.5 Add Spatial Indexes for Geo Queries
+
+**Impact: MEDIUM-HIGH** (enables efficient location queries)
+
+## Add Spatial Indexes for Geo Queries
+
+Create spatial indexes for properties that store geographic data when you need to perform proximity or geometry queries.
+
+**Incorrect (geo queries without spatial index):**
+
+```csharp
+// Document with location
+{
+    "id": "store-1",
+    "name": "Downtown Store",
+    "location": {
+        "type": "Point",
+        "coordinates": [-122.4194, 37.7749]  // [longitude, latitude]
+    }
+}
+
+// Query without spatial index - expensive full scan!
+var query = @"
+    SELECT * FROM c 
+    WHERE ST_DISTANCE(c.location, {'type':'Point','coordinates':[-122.4,37.7]}) < 5000";
+```
+
+**Correct (spatial index for location queries):**
+
+```csharp
+// Create indexing policy with spatial index
+var indexingPolicy = new IndexingPolicy
+{
+    IndexingMode = IndexingMode.Consistent,
+    
+    // Include path with spatial index
+    SpatialIndexes =
+    {
+        new SpatialPath
+        {
+            Path = "/location/?",
+            SpatialTypes =
+            {
+                SpatialType.Point
+            }
+        }
+    }
+};
+
+// If you have multiple geometry types
+var indexingPolicyMulti = new IndexingPolicy
+{
+    SpatialIndexes =
+    {
+        // Store locations as points
+        new SpatialPath
+        {
+            Path = "/location/?",
+            SpatialTypes = { SpatialType.Point }
+        },
+        // Delivery zones as polygons
+        new SpatialPath
+        {
+            Path = "/deliveryArea/?",
+            SpatialTypes = { SpatialType.Polygon }
+        }
+    }
+};
+```
+
+```json
+// JSON indexing policy with spatial index
+{
+    "indexingMode": "consistent",
+    "spatialIndexes": [
+        {
+            "path": "/location/?",
+            "types": ["Point"]
+        },
+        {
+            "path": "/boundaries/?",
+            "types": ["Polygon"]
+        }
+    ]
+}
+```
+
+```csharp
+// Efficient spatial queries with index
+
+// Find stores within 5km of user
+var nearbyQuery = @"
+    SELECT c.name, c.address, 
+           ST_DISTANCE(c.location, @userLocation) AS distanceMeters
+    FROM c 
+    WHERE ST_DISTANCE(c.location, @userLocation) < 5000
+    ORDER BY ST_DISTANCE(c.location, @userLocation)";
+
+var userLocation = new
+{
+    type = "Point",
+    coordinates = new[] { -122.4194, 37.7749 }
+};
+
+var stores = await container.GetItemQueryIterator<Store>(
+    new QueryDefinition(nearbyQuery)
+        .WithParameter("@userLocation", userLocation)
+).ReadNextAsync();
+
+// Check if point is within polygon (delivery zone)
+var withinQuery = @"
+    SELECT * FROM c 
+    WHERE ST_WITHIN(@orderLocation, c.deliveryArea)";
+
+// Find intersecting regions
+var intersectQuery = @"
+    SELECT * FROM c 
+    WHERE ST_INTERSECTS(c.boundaries, @searchArea)";
+```
+
+Supported spatial functions:
+- `ST_DISTANCE` - Distance between geometries
+- `ST_WITHIN` - Point within polygon
+- `ST_INTERSECTS` - Geometries intersect
+- `ST_ISVALID` - Validate GeoJSON
+- `ST_ISVALIDDETAILED` - Validation with details
+
+Reference: [Geospatial queries](https://learn.microsoft.com/azure/cosmos-db/nosql/query/geospatial)
 
 ---
 
@@ -482,40 +3232,446 @@ Range indexes (default) support equality, range, and ORDER BY.
 
 **Impact: MEDIUM**
 
-Right-sizing throughput balances cost and performance.
-
 ### 6.1 Use Autoscale for Variable Workloads
 
-**Impact: HIGH (handles traffic spikes)**
+**Impact: HIGH** (handles traffic spikes, optimizes cost)
+
+## Use Autoscale for Variable Workloads
+
+Use autoscale throughput for workloads with variable or unpredictable traffic patterns. It automatically scales between 10% and 100% of max RU/s.
+
+**Incorrect (fixed throughput for variable workload):**
 
 ```csharp
-ThroughputProperties.CreateAutoscaleThroughput(maxThroughput: 10000)
+// Fixed provisioned throughput
+var containerProperties = new ContainerProperties
+{
+    Id = "orders",
+    PartitionKeyPath = "/customerId"
+};
+
+await database.CreateContainerAsync(
+    containerProperties,
+    throughput: 10000);  // Fixed 10,000 RU/s always
+
+// Problems:
+// - Peak hours: 10K RU/s isn't enough → throttling
+// - Off-peak: 10K RU/s is wasted → paying for unused capacity
+// - Black Friday: Can't handle 50x spike → massive throttling
 ```
 
-### 6.2 Right-Size Provisioned Throughput
+**Correct (autoscale for variable workloads):**
 
-**Impact: MEDIUM**
+```csharp
+// Autoscale with max 10,000 RU/s
+var containerProperties = new ContainerProperties
+{
+    Id = "orders",
+    PartitionKeyPath = "/customerId"
+};
 
-Monitor and adjust based on actual usage.
+await database.CreateContainerAsync(
+    containerProperties,
+    throughputProperties: ThroughputProperties.CreateAutoscaleThroughput(
+        maxThroughput: 10000));  // Scales 1,000-10,000 RU/s
 
-### 6.3 Consider Serverless for Dev/Test
+// Benefits:
+// - Quiet period: Scales down to 1,000 RU/s (10% of max)
+// - Busy period: Scales up to 10,000 RU/s automatically
+// - No throttling during traffic spikes
+// - Pay only for what you use (within autoscale range)
+```
 
-**Impact: MEDIUM (pay-per-request pricing)**
+```csharp
+// Check current autoscale settings
+var throughputResponse = await container.ReadThroughputAsync(new RequestOptions());
+var autoscaleSettings = throughputResponse.Resource.AutoscaleMaxThroughput;
+Console.WriteLine($"Autoscale max: {autoscaleSettings} RU/s");
+Console.WriteLine($"Current: {throughputResponse.Resource.Throughput} RU/s");
+```
 
-No minimum commitment for low-traffic scenarios.
+```csharp
+// Modify autoscale max throughput
+await container.ReplaceThroughputAsync(
+    ThroughputProperties.CreateAutoscaleThroughput(maxThroughput: 20000));
+// Now scales between 2,000-20,000 RU/s
+```
 
-### 6.4 Understand Burst Capacity
+Cost comparison example:
+- Fixed 10,000 RU/s: ~$584/month (always)
+- Autoscale 10,000 max: $58-$584/month (based on usage)
+- If average utilization is 30%, autoscale saves ~70%!
 
-**Impact: MEDIUM**
+When to use autoscale:
+- Variable traffic (peak hours, batch jobs)
+- Unpredictable workloads
+- Development/test environments
+- New applications (unknown traffic patterns)
 
-Short-term spike handling, not for sustained load.
+When to use fixed:
+- Steady, predictable workloads (utilization > 66%)
+- Cost-sensitive workloads with known patterns
 
-### 6.5 Choose Container vs Database Throughput
+Reference: [Autoscale throughput](https://learn.microsoft.com/azure/cosmos-db/provision-throughput-autoscale)
 
-**Impact: MEDIUM**
+### 6.2 Understand Burst Capacity
 
-- Container: Guaranteed isolation
-- Database: Cost efficient for many low-traffic containers
+**Impact: MEDIUM** (handles short traffic spikes)
+
+## Understand Burst Capacity
+
+Cosmos DB provides burst capacity to handle short traffic spikes above provisioned throughput. Understand how it works to avoid unexpected throttling.
+
+**How burst capacity works:**
+
+```csharp
+// Cosmos DB accumulates unused RU/s into a burst bucket
+// Maximum burst: 300 seconds worth of provisioned throughput
+
+// Example: 1,000 RU/s provisioned
+// - If you use 500 RU/s average, unused 500 RU/s accumulates
+// - Maximum burst bucket: 1,000 × 300 = 300,000 RU
+// - Allows short spike up to ~1,500 RU/s until bucket depletes
+
+// Visual representation:
+// Time:    | Steady | Light | BURST | Steady |
+// Usage:   | 1000   | 500   | 2000  | 1000   |
+// Burst:   | 0      | +500  | -1000 | 0      |
+//          |--------|-------|-------|--------|
+// Result:  | OK     | OK    | OK*   | OK     |
+// * Uses accumulated burst capacity
+```
+
+**Incorrect (relying on burst for sustained load):**
+
+```csharp
+// Provisioned 1,000 RU/s but regularly need 1,500 RU/s
+var container = await database.CreateContainerAsync(props, throughput: 1000);
+
+// Hoping burst will cover:
+// - Hour 1: Burst bucket fills from overnight
+// - Hour 2-3: Burst bucket depletes
+// - Hour 4+: Throttling (429s) begins!
+
+// Result: Temporary success followed by degraded performance
+```
+
+**Correct (provision for actual sustained needs):**
+
+```csharp
+// Option 1: Provision for peak sustained load
+await database.CreateContainerAsync(props, throughput: 1500);
+
+// Option 2: Use autoscale for variable loads
+await database.CreateContainerAsync(
+    props,
+    throughputProperties: ThroughputProperties.CreateAutoscaleThroughput(
+        maxThroughput: 2000));  // Scales 200-2000 RU/s
+
+// Burst is for:
+// - Momentary spikes (seconds to a few minutes)
+// - NOT for sustained elevated load
+```
+
+```csharp
+// Monitor burst usage
+// Azure Monitor metric: "Normalized RU Consumption"
+// - > 100% means using burst capacity
+// - Sustained > 100% will lead to throttling
+
+// Detect burst usage in code
+var response = await container.ReadItemAsync<Order>(id, pk);
+// Check if operation used more than provisioned share
+// (Diagnostics contain server-side timing and capacity info)
+```
+
+Best practices:
+- Use burst for absorbing unexpected short spikes
+- Don't rely on burst for regular operation
+- Monitor "Normalized RU Consumption" metric
+- If regularly > 90%, consider scaling up or using autoscale
+- Burst capacity is per partition - hot partitions may throttle even with burst available
+
+Reference: [Burst capacity](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#throughput-limits)
+
+### 6.3 Choose Container vs Database Throughput
+
+**Impact: MEDIUM** (optimizes cost and isolation)
+
+## Choose Container vs Database Throughput
+
+Decide between container-level (dedicated) and database-level (shared) throughput based on workload isolation needs and cost optimization.
+
+**Container-level throughput (dedicated):**
+
+```csharp
+// Each container has dedicated RU/s
+var ordersContainer = await database.CreateContainerAsync(
+    new ContainerProperties("orders", "/customerId"),
+    throughput: 10000);  // Dedicated 10,000 RU/s
+
+var productsContainer = await database.CreateContainerAsync(
+    new ContainerProperties("products", "/categoryId"),
+    throughput: 2000);  // Dedicated 2,000 RU/s
+
+// Benefits:
+// - Guaranteed throughput per container
+// - No "noisy neighbor" effect
+// - Predictable performance
+
+// Use when:
+// - Critical workloads needing guaranteed throughput
+// - Containers with very different usage patterns
+// - High-throughput containers (> 10,000 RU/s)
+```
+
+**Database-level throughput (shared):**
+
+```csharp
+// Database shares throughput across containers
+var database = await cosmosClient.CreateDatabaseAsync(
+    "my-database",
+    throughput: 10000);  // 10,000 RU/s shared across all containers
+
+var ordersContainer = await database.CreateContainerAsync(
+    new ContainerProperties("orders", "/customerId"));
+    // No throughput specified - uses database shared pool
+
+var productsContainer = await database.CreateContainerAsync(
+    new ContainerProperties("products", "/categoryId"));
+    // Also uses shared pool
+
+var logsContainer = await database.CreateContainerAsync(
+    new ContainerProperties("logs", "/date"));
+    // Also uses shared pool
+
+// Benefits:
+// - Cost efficient for many low-traffic containers
+// - Throughput flows to wherever it's needed
+// - Minimum 400 RU/s total (vs 400 per container)
+
+// Use when:
+// - Many containers with varying/low traffic
+// - Containers accessed at different times
+// - Cost optimization is priority
+```
+
+**Hybrid approach:**
+
+```csharp
+// Shared database for most containers
+var database = await cosmosClient.CreateDatabaseAsync(
+    "my-database",
+    throughput: 5000);  // 5,000 RU/s shared
+
+// Dedicated throughput for critical/high-volume container
+var ordersContainer = await database.CreateContainerAsync(
+    new ContainerProperties("orders", "/customerId"),
+    throughput: 10000);  // Dedicated 10,000 RU/s - NOT shared!
+
+// Other containers share database throughput
+var productsContainer = await database.CreateContainerAsync(
+    new ContainerProperties("products", "/categoryId"));  // Shared
+var usersContainer = await database.CreateContainerAsync(
+    new ContainerProperties("users", "/userId"));  // Shared
+```
+
+Decision matrix:
+| Scenario | Recommendation |
+|----------|---------------|
+| Few containers, predictable load | Container-level |
+| Many containers, variable load | Database-level |
+| Mixed critical + low-traffic | Hybrid |
+| Multi-tenant isolation | Container-level per tenant |
+| Development/testing | Database-level (cost saving) |
+
+Reference: [Throughput on containers vs databases](https://learn.microsoft.com/azure/cosmos-db/set-throughput)
+
+### 6.4 Right-Size Provisioned Throughput
+
+**Impact: MEDIUM** (balances performance and cost)
+
+## Right-Size Provisioned Throughput
+
+Provision throughput based on actual workload needs. Over-provisioning wastes money; under-provisioning causes throttling.
+
+**Incorrect (arbitrary throughput):**
+
+```csharp
+// Guessing throughput without analysis
+await database.CreateContainerAsync(containerProperties, throughput: 10000);
+// "10,000 sounds like a good number"
+
+// Results in:
+// - Over-provisioned: Wasting money if actual need is 2,000 RU/s
+// - Under-provisioned: Throttling if actual need is 15,000 RU/s
+```
+
+**Correct (data-driven provisioning):**
+
+```csharp
+// Step 1: Calculate RU requirements
+
+// Point read (by id + partition key): ~1 RU for 1KB item
+// Point write: ~5 RU for 1KB item  
+// Query: 2.5-10+ RU depending on complexity
+
+// Example calculation:
+// - 100 reads/sec × 1 RU = 100 RU/s
+// - 50 writes/sec × 5 RU = 250 RU/s
+// - 20 queries/sec × 10 RU = 200 RU/s
+// - Total: 550 RU/s baseline
+// - Add 2x buffer for spikes: 1,100 RU/s
+// - Round to minimum: 1,000 RU/s (minimum for manual)
+
+await database.CreateContainerAsync(containerProperties, throughput: 1000);
+```
+
+```csharp
+// Step 2: Monitor and adjust
+
+// Check RU consumption in code
+var response = await container.ReadItemAsync<Order>(id, new PartitionKey(pk));
+Console.WriteLine($"Read consumed: {response.RequestCharge} RU");
+
+var queryResponse = await container.GetItemQueryIterator<Order>(query).ReadNextAsync();
+Console.WriteLine($"Query consumed: {queryResponse.RequestCharge} RU");
+
+// Monitor via Azure Monitor metrics:
+// - Total Request Units: actual consumption
+// - Normalized RU Consumption: % of provisioned used
+// - 429 Throttling: indicates under-provisioned
+```
+
+```csharp
+// Step 3: Adjust based on metrics
+public async Task AdjustThroughputAsync(Container container)
+{
+    // Get current throughput
+    var current = await container.ReadThroughputAsync();
+    
+    // Check metrics (would come from Azure Monitor in production)
+    var avgUtilization = await GetAverageRUUtilization(container);
+    
+    if (avgUtilization > 80)
+    {
+        // Scale up to reduce throttling risk
+        var newThroughput = (int)(current.Resource.Throughput * 1.5);
+        await container.ReplaceThroughputAsync(newThroughput);
+        _logger.LogInformation("Scaled up to {RU} RU/s", newThroughput);
+    }
+    else if (avgUtilization < 20)
+    {
+        // Scale down to save cost
+        var newThroughput = Math.Max(400, (int)(current.Resource.Throughput * 0.5));
+        await container.ReplaceThroughputAsync(newThroughput);
+        _logger.LogInformation("Scaled down to {RU} RU/s", newThroughput);
+    }
+}
+```
+
+Throughput guidance:
+- Start low, monitor, and adjust
+- Target 60-70% average utilization for fixed throughput
+- Use autoscale for unpredictable workloads
+- Monitor for 429s (throttling indicator)
+- Scale before known traffic events (sales, launches)
+
+Reference: [Estimate RU/s](https://learn.microsoft.com/azure/cosmos-db/estimate-ru-with-capacity-planner)
+
+### 6.5 Consider Serverless for Dev/Test
+
+**Impact: MEDIUM** (pay-per-request pricing)
+
+## Consider Serverless for Dev/Test
+
+Use serverless accounts for development, testing, and low-traffic workloads. Pay only for actual RU consumption with no minimum commitment.
+
+**Incorrect (provisioned for low traffic):**
+
+```csharp
+// Development environment with provisioned throughput
+// Minimum 400 RU/s × 24 hours × 30 days = always-on cost
+await database.CreateContainerAsync(containerProperties, throughput: 400);
+
+// Problems:
+// - Dev environment sits idle 90% of time
+// - Still paying for 400 RU/s continuously
+// - Multiple dev containers = multiplied waste
+```
+
+**Correct (serverless for low/sporadic traffic):**
+
+```csharp
+// Create serverless account (at account level, not container)
+// No throughput specification - purely consumption-based
+
+// Container creation in serverless account (no throughput parameter)
+var containerProperties = new ContainerProperties
+{
+    Id = "orders",
+    PartitionKeyPath = "/customerId"
+};
+
+await database.CreateContainerIfNotExistsAsync(containerProperties);
+// No throughput = serverless mode
+
+// Cost: Only pay for RUs consumed
+// - Idle: $0
+// - Light usage: pennies per day
+// - Burst: pay for actual consumption
+```
+
+```csharp
+// Serverless is set at account level, not container
+// ARM template for serverless account
+{
+    "type": "Microsoft.DocumentDB/databaseAccounts",
+    "apiVersion": "2021-10-15",
+    "name": "my-serverless-account",
+    "properties": {
+        "databaseAccountOfferType": "Standard",
+        "capabilities": [
+            {
+                "name": "EnableServerless"  // Serverless mode
+            }
+        ],
+        "locations": [
+            {
+                "locationName": "West US 2"
+            }
+        ]
+    }
+}
+```
+
+When to use serverless:
+- Development and test environments
+- Proof of concepts and prototypes
+- Low traffic applications (< 5,000 RU/s sustained)
+- Sporadic workloads (nightly batch jobs)
+- Variable traffic with low baseline
+
+When NOT to use serverless:
+- Production with sustained high traffic
+- Applications requiring > 5,000 RU/s
+- Multi-region deployments (not supported)
+- Workloads needing guaranteed throughput
+
+```csharp
+// Serverless limitations to be aware of
+// - Maximum 5,000 RU/s per container
+// - Single region only
+// - No dedicated gateway
+// - No analytical store (Synapse Link)
+
+// Cost comparison:
+// Provisioned 400 RU/s: ~$23/month (always)
+// Serverless with 1M RU/month: ~$0.25/month
+// Break-even: ~30M RU/month
+```
+
+Reference: [Serverless in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/serverless)
 
 ---
 
@@ -523,39 +3679,602 @@ Short-term spike handling, not for sustained load.
 
 **Impact: MEDIUM**
 
-Multi-region configuration enables low-latency globally.
+### 7.1 Implement Conflict Resolution
 
-### 7.1 Configure Multi-Region Writes
+**Impact: MEDIUM** (ensures data integrity in multi-region)
 
-**Impact: HIGH (enables local writes)**
+## Implement Conflict Resolution
 
-`enableMultipleWriteLocations: true`
+Configure appropriate conflict resolution policies for multi-region write scenarios. Without proper handling, data can be lost.
+
+**Understanding conflicts:**
+
+```csharp
+// Conflicts occur when same document is written in multiple regions
+// before replication completes
+
+// Region A: Update order status to "shipped"
+// Region B: Update order status to "cancelled" (same time)
+// Both writes succeed locally, then conflict during replication
+```
+
+**Incorrect (ignoring conflicts):**
+
+```csharp
+// Using default LWW with _ts but not understanding implications
+// Later timestamp wins - but "later" may be wrong server
+
+// Server A clock: 10:00:00.100 → "shipped"
+// Server B clock: 10:00:00.050 → "cancelled"
+// Result: "shipped" wins even though B's write may be logically later
+```
+
+**Correct (explicit conflict resolution):**
+
+```csharp
+// Option 1: Last Writer Wins with logical clock (recommended)
+var containerProperties = new ContainerProperties
+{
+    Id = "orders",
+    PartitionKeyPath = "/customerId",
+    ConflictResolutionPolicy = new ConflictResolutionPolicy
+    {
+        Mode = ConflictResolutionMode.LastWriterWins,
+        ResolutionPath = "/version"  // Use application-managed version
+    }
+};
+
+// Document with version counter
+public class Order
+{
+    public string Id { get; set; }
+    public string CustomerId { get; set; }
+    public string Status { get; set; }
+    public long Version { get; set; }  // Increment on each update
+}
+
+// Update with version increment
+public async Task UpdateOrderStatus(Order order, string newStatus)
+{
+    order.Status = newStatus;
+    order.Version++;  // Higher version always wins
+    await container.UpsertItemAsync(order, new PartitionKey(order.CustomerId));
+}
+```
+
+```csharp
+// Option 2: Stored procedure for custom resolution
+var containerWithCustom = new ContainerProperties
+{
+    Id = "inventory",
+    PartitionKeyPath = "/productId",
+    ConflictResolutionPolicy = new ConflictResolutionPolicy
+    {
+        Mode = ConflictResolutionMode.Custom,
+        ResolutionProcedure = "dbs/mydb/colls/inventory/sprocs/resolveConflict"
+    }
+};
+
+// Stored procedure for custom logic
+// Example: For inventory, take the LOWER value (conservative)
+const string resolveConflictSproc = @"
+function resolveConflict(incomingItem, existingItem, isTombstone, conflictingItems) {
+    if (isTombstone) {
+        // Delete wins
+        return existingItem;
+    }
+    
+    // For inventory: lower quantity wins (conservative)
+    if (existingItem.quantity < incomingItem.quantity) {
+        return existingItem;
+    }
+    return incomingItem;
+}";
+```
+
+```csharp
+// Option 3: Read and resolve conflicts manually (async)
+// Conflicts written to conflicts feed when no automatic resolution
+
+var conflictsFeed = container.Conflicts.GetConflictQueryIterator<dynamic>();
+
+while (conflictsFeed.HasMoreResults)
+{
+    var conflicts = await conflictsFeed.ReadNextAsync();
+    foreach (var conflict in conflicts)
+    {
+        // Read conflicting versions
+        var conflictContent = await container.Conflicts.ReadCurrentAsync<Order>(
+            conflict, new PartitionKey(conflict.PartitionKey));
+        
+        // Apply custom resolution logic
+        var resolvedOrder = ResolveOrderConflict(conflictContent.Resource);
+        
+        // Write resolved version
+        await container.UpsertItemAsync(resolvedOrder);
+        
+        // Delete conflict record
+        await container.Conflicts.DeleteAsync(conflict, new PartitionKey(conflict.PartitionKey));
+    }
+}
+```
+
+Best practices:
+- Use LWW with application-controlled version for simple cases
+- Use stored procedures when business logic determines winner
+- Monitor conflicts feed if using Custom mode
+- Design to minimize conflicts (partition by user, idempotent operations)
+
+Reference: [Conflict resolution](https://learn.microsoft.com/azure/cosmos-db/conflict-resolution-policies)
 
 ### 7.2 Choose Appropriate Consistency Level
 
-**Impact: HIGH**
+**Impact: HIGH** (balances latency, availability, consistency)
 
-- Session (default): Best balance
-- Strong: Financial transactions
-- Eventual: Highest performance
+## Choose Appropriate Consistency Level
 
-### 7.3 Implement Conflict Resolution
+Select the consistency level that matches your application's requirements. Each level has different tradeoffs for latency, availability, and consistency.
 
-**Impact: MEDIUM**
+**Consistency levels (strongest to weakest):**
 
-Configure Last Writer Wins or custom resolution.
+```csharp
+// STRONG - Linearizable reads
+// Reads always see most recent committed write
+// Highest latency, lowest availability in multi-region
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Strong
+});
+// Use: Financial transactions, inventory management
+// Tradeoff: Higher latency, reduced availability during regional outage
 
-### 7.4 Configure Automatic Failover
+// BOUNDED STALENESS - Reads lag behind writes by bounded amount
+// "Reads at least this fresh" guarantee
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.BoundedStaleness
+});
+// Use: Stock tickers, leaderboards (where slight delay is OK)
+// Tradeoff: May read slightly old data, better performance than Strong
 
-**Impact: HIGH (ensures availability)**
+// SESSION (DEFAULT) - Monotonic reads within session
+// Client always sees its own writes
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Session
+});
+// Use: Most applications - user sees their changes
+// Best balance of consistency and performance
 
-`enableAutomaticFailover: true`
+// CONSISTENT PREFIX - Reads never see out-of-order writes
+// Guarantees ordering but may lag behind
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.ConsistentPrefix
+});
+// Use: Event sourcing, activity feeds
+// Tradeoff: May read stale data, but always in order
+
+// EVENTUAL - Weakest, highest performance
+// No ordering guarantees, eventually converges
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Eventual
+});
+// Use: View counts, likes, non-critical telemetry
+// Best performance, lowest cost
+```
+
+**Correct (choosing based on requirements):**
+
+```csharp
+// Example: E-commerce platform
+
+// Orders container - Strong or Session
+// User must see their order immediately after placing
+var ordersClient = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Session  // Recommended
+});
+
+// Product catalog - Eventual or Consistent Prefix
+// Slight delay in inventory updates is acceptable
+var catalogClient = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Eventual
+});
+
+// Analytics/metrics - Eventual
+// Historical data doesn't need immediate consistency
+var analyticsClient = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ConsistencyLevel = ConsistencyLevel.Eventual
+});
+```
+
+```csharp
+// Session consistency with session token (most common pattern)
+// SDK handles session tokens automatically within a client instance
+
+// For scenarios where you need to share session across requests:
+var response = await container.CreateItemAsync(order);
+var sessionToken = response.Headers["x-ms-session-token"];
+
+// Later request can use same session for read-your-writes
+var readOptions = new ItemRequestOptions
+{
+    SessionToken = sessionToken
+};
+var order = await container.ReadItemAsync<Order>(id, pk, readOptions);
+```
+
+RU cost comparison (relative to Strong):
+- Strong: 2x RU for reads (waits for quorum)
+- Bounded Staleness: 2x RU for reads
+- Session: 1x RU (default)
+- Consistent Prefix: 1x RU
+- Eventual: 1x RU
+
+Reference: [Consistency levels](https://learn.microsoft.com/azure/cosmos-db/consistency-levels)
+
+### 7.3 Configure Automatic Failover
+
+**Impact: HIGH** (ensures availability during outages)
+
+## Configure Automatic Failover
+
+Enable automatic failover for high availability. Without it, regional outages require manual intervention.
+
+**Incorrect (no failover configuration):**
+
+```csharp
+// Multi-region account without automatic failover
+// If primary region goes down:
+// - Manual intervention required
+// - Downtime until you notice and trigger failover
+// - MTTR (Mean Time To Recovery) = hours potentially
+
+// ARM template without failover
+{
+    "properties": {
+        "enableAutomaticFailover": false,  // DEFAULT - dangerous!
+        "locations": [
+            { "locationName": "West US 2", "failoverPriority": 0 },
+            { "locationName": "East US 2", "failoverPriority": 1 }
+        ]
+    }
+}
+```
+
+**Correct (automatic failover enabled):**
+
+```csharp
+// ARM template with automatic failover
+{
+    "type": "Microsoft.DocumentDB/databaseAccounts",
+    "apiVersion": "2021-10-15",
+    "name": "my-cosmos-account",
+    "properties": {
+        "enableAutomaticFailover": true,  // Enable automatic failover!
+        
+        // Define failover priority order
+        "locations": [
+            { 
+                "locationName": "West US 2", 
+                "failoverPriority": 0,  // Primary
+                "isZoneRedundant": true  // Zone redundancy for HA
+            },
+            { 
+                "locationName": "East US 2", 
+                "failoverPriority": 1   // First failover target
+            },
+            { 
+                "locationName": "West Europe", 
+                "failoverPriority": 2   // Second failover target
+            }
+        ]
+    }
+}
+```
+
+```csharp
+// Configure SDK to handle failovers gracefully
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ApplicationName = "MyApp",
+    
+    // SDK will automatically discover new endpoints after failover
+    EnableTcpConnectionEndpointRediscovery = true,
+    
+    // Preferred regions in priority order
+    ApplicationPreferredRegions = new List<string>
+    {
+        Regions.WestUS2,     // Primary
+        Regions.EastUS2,     // Failover 1
+        Regions.WestEurope   // Failover 2
+    },
+    
+    // Connection will retry and discover new primary
+    MaxRetryAttemptsOnRateLimitedRequests = 9,
+    MaxRetryWaitTimeOnRateLimitedRequests = TimeSpan.FromSeconds(30)
+});
+
+// SDK handles failover transparently - your code doesn't change
+await container.CreateItemAsync(order, new PartitionKey(order.CustomerId));
+// If West US 2 is down, SDK automatically routes to East US 2
+```
+
+```csharp
+// Monitor failover status
+var accountProperties = await client.ReadAccountAsync();
+
+Console.WriteLine($"Write regions: {string.Join(", ", 
+    accountProperties.WritableRegions.Select(r => r.Name))}");
+Console.WriteLine($"Read regions: {string.Join(", ", 
+    accountProperties.ReadableRegions.Select(r => r.Name))}");
+
+// Set up Azure Monitor alerts for:
+// - Region failover events
+// - Replication lag metrics
+// - Availability metrics
+```
+
+```csharp
+// Test failover (non-production)
+// Azure CLI command to trigger manual failover
+// az cosmosdb failover-priority-change \
+//   --name mycosmosdb \
+//   --resource-group myrg \
+//   --failover-policies "East US 2"=0 "West US 2"=1
+
+// Monitor your application behavior during failover test
+// Expect: brief increase in latency, no data loss
+```
+
+Automatic failover behavior:
+- Triggered after region unresponsive for ~1 minute
+- Promotes next region in priority order
+- SDK automatically reconnects to new primary
+- No data loss with synchronous replication
+
+Reference: [Automatic failover](https://learn.microsoft.com/azure/cosmos-db/high-availability)
+
+### 7.4 Configure Multi-Region Writes
+
+**Impact: HIGH** (enables local writes, high availability)
+
+## Configure Multi-Region Writes
+
+Enable multi-region writes for globally distributed applications. Allows writes to any region with automatic conflict resolution.
+
+**Incorrect (single write region):**
+
+```csharp
+// Default: Single write region
+// All writes must travel to one region
+// Users in Asia writing to US region: 200-300ms latency
+
+// No multi-region write configuration
+var client = new CosmosClient(connectionString);
+
+// Write from Asia still goes to US (write region)
+await container.CreateItemAsync(order);  // 200ms+ latency for Asian users
+```
+
+**Correct (multi-region writes enabled):**
+
+```csharp
+// Step 1: Enable multi-region writes on account (Azure Portal or ARM)
+{
+    "type": "Microsoft.DocumentDB/databaseAccounts",
+    "properties": {
+        "enableMultipleWriteLocations": true,  // Enable multi-region writes
+        "locations": [
+            { "locationName": "West US 2", "failoverPriority": 0 },
+            { "locationName": "East Asia", "failoverPriority": 1 },
+            { "locationName": "West Europe", "failoverPriority": 2 }
+        ]
+    }
+}
+
+// Step 2: Configure SDK to write locally
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    // SDK automatically routes to nearest region
+    ApplicationPreferredRegions = new List<string>
+    {
+        Regions.EastAsia,    // First choice (if deployed in Asia)
+        Regions.WestUS2,
+        Regions.WestEurope
+    }
+});
+
+// Write goes to nearest region (East Asia for Asian users)
+await container.CreateItemAsync(order);  // <10ms latency locally!
+```
+
+```csharp
+// Step 3: Handle conflicts (Last Writer Wins is default)
+// For custom conflict resolution, configure container
+
+// Last Writer Wins (LWW) - Default
+// Uses _ts (timestamp) to determine winner
+var containerWithLWW = new ContainerProperties
+{
+    Id = "orders",
+    PartitionKeyPath = "/customerId",
+    ConflictResolutionPolicy = new ConflictResolutionPolicy
+    {
+        Mode = ConflictResolutionMode.LastWriterWins,
+        ResolutionPath = "/_ts"  // Higher timestamp wins
+    }
+};
+
+// Custom resolution path (e.g., version number)
+var containerWithCustomLWW = new ContainerProperties
+{
+    Id = "products",
+    PartitionKeyPath = "/categoryId",
+    ConflictResolutionPolicy = new ConflictResolutionPolicy
+    {
+        Mode = ConflictResolutionMode.LastWriterWins,
+        ResolutionPath = "/version"  // Higher version wins
+    }
+};
+```
+
+```csharp
+// Verify multi-region write is working
+var accountProperties = await client.ReadAccountAsync();
+Console.WriteLine($"Multi-region writes: {accountProperties.EnableMultipleWriteLocations}");
+Console.WriteLine($"Write regions: {string.Join(", ", 
+    accountProperties.WritableRegions.Select(r => r.Name))}");
+```
+
+Benefits:
+- Local write latency (< 10ms vs 200ms+)
+- Higher write availability (any region can accept writes)
+- Better disaster recovery
+
+Considerations:
+- Higher cost (replication in both directions)
+- Requires conflict resolution strategy
+- Some operations have restrictions (stored procedures)
+
+Reference: [Multi-region writes](https://learn.microsoft.com/azure/cosmos-db/multi-region-writes)
 
 ### 7.5 Add Read Regions Near Users
 
-**Impact: MEDIUM (reduces read latency)**
+**Impact: MEDIUM** (reduces read latency globally)
 
-Add replicas in user-heavy geographic regions.
+## Add Read Regions Near Users
+
+Add read regions in geographic locations close to your users. Reads can be served from any region, reducing latency for global users.
+
+**Incorrect (single region for global users):**
+
+```csharp
+// Only one region configured
+// Users from all locations read from single region
+// Asia users → 200ms+ latency to US region
+// Europe users → 100ms+ latency to US region
+
+{
+    "properties": {
+        "locations": [
+            { "locationName": "West US 2", "failoverPriority": 0 }
+        ]
+    }
+}
+```
+
+**Correct (read regions near user populations):**
+
+```csharp
+// Add read replicas near major user bases
+{
+    "type": "Microsoft.DocumentDB/databaseAccounts",
+    "properties": {
+        "locations": [
+            // Primary write region
+            { 
+                "locationName": "West US 2", 
+                "failoverPriority": 0 
+            },
+            // Read replica for European users
+            { 
+                "locationName": "West Europe", 
+                "failoverPriority": 1 
+            },
+            // Read replica for Asian users
+            { 
+                "locationName": "Southeast Asia", 
+                "failoverPriority": 2 
+            },
+            // Read replica for Australian users
+            { 
+                "locationName": "Australia East", 
+                "failoverPriority": 3 
+            }
+        ]
+    }
+}
+```
+
+```csharp
+// Configure SDK for region-local reads
+// Deployed in Europe - prioritize European region
+var europeClient = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ApplicationPreferredRegions = new List<string>
+    {
+        Regions.WestEurope,      // Nearest region first
+        Regions.NorthEurope,     // Backup within Europe
+        Regions.WestUS2          // Primary (for writes)
+    }
+});
+
+// Deployed in Asia - prioritize Asian region
+var asiaClient = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    ApplicationPreferredRegions = new List<string>
+    {
+        Regions.SoutheastAsia,   // Nearest region first
+        Regions.EastAsia,        // Backup within Asia
+        Regions.WestUS2          // Primary (for writes)
+    }
+});
+```
+
+```csharp
+// Dynamic region selection based on deployment
+public static CosmosClient CreateRegionalClient(string connectionString)
+{
+    var deploymentRegion = Environment.GetEnvironmentVariable("AZURE_REGION") 
+        ?? "westus2";
+    
+    var preferredRegions = deploymentRegion.ToLower() switch
+    {
+        "westeurope" or "northeurope" => new List<string>
+        {
+            Regions.WestEurope, Regions.NorthEurope, Regions.WestUS2
+        },
+        "southeastasia" or "eastasia" => new List<string>
+        {
+            Regions.SoutheastAsia, Regions.EastAsia, Regions.WestUS2
+        },
+        "australiaeast" => new List<string>
+        {
+            Regions.AustraliaEast, Regions.SoutheastAsia, Regions.WestUS2
+        },
+        _ => new List<string>
+        {
+            Regions.WestUS2, Regions.EastUS2
+        }
+    };
+    
+    return new CosmosClient(connectionString, new CosmosClientOptions
+    {
+        ApplicationPreferredRegions = preferredRegions
+    });
+}
+```
+
+```csharp
+// Verify reads are going to correct region
+var response = await container.ReadItemAsync<Order>(orderId, pk);
+// Check diagnostics for contacted region
+var diagnostics = response.Diagnostics.ToString();
+_logger.LogDebug("Request served from: {Diagnostics}", diagnostics);
+// Look for "Contacted Region" in diagnostics
+```
+
+Cost considerations:
+- Each read replica adds cost (~same as primary)
+- Calculate: User latency improvement × request volume vs. replica cost
+- Start with regions serving most users, add more based on metrics
+
+Reference: [Global distribution](https://learn.microsoft.com/azure/cosmos-db/distribute-data-globally)
 
 ---
 
@@ -563,37 +4282,754 @@ Add replicas in user-heavy geographic regions.
 
 **Impact: LOW-MEDIUM**
 
-Proactive monitoring catches issues before they impact users.
+### 8.1 Integrate Azure Monitor
 
-### 8.1 Track RU Consumption
+**Impact: MEDIUM** (enables comprehensive observability)
 
-**Impact: MEDIUM**
+## Integrate Azure Monitor
 
-Log `response.RequestCharge` for cost optimization.
+Enable Azure Monitor integration for comprehensive visibility into Cosmos DB performance, availability, and cost metrics.
 
-### 8.2 Monitor P99 Latency
+**Incorrect (no monitoring integration):**
 
-**Impact: MEDIUM**
+```csharp
+// Flying blind - no visibility into:
+// - RU consumption trends
+// - Latency patterns
+// - Throttling events
+// - Availability issues
+// - Cost attribution
 
-Track percentiles, not just averages.
+// Application runs but you only know about problems from user complaints
+```
 
-### 8.3 Alert on Throttling (429s)
+**Correct (Azure Monitor integration):**
 
-**Impact: HIGH (prevents silent failures)**
+```csharp
+// Step 1: Enable diagnostic settings (Azure Portal, CLI, or ARM)
+{
+    "type": "Microsoft.DocumentDB/databaseAccounts/providers/diagnosticSettings",
+    "properties": {
+        "logs": [
+            {
+                "category": "DataPlaneRequests",
+                "enabled": true,
+                "retentionPolicy": { "enabled": true, "days": 30 }
+            },
+            {
+                "category": "QueryRuntimeStatistics",
+                "enabled": true
+            },
+            {
+                "category": "PartitionKeyStatistics",
+                "enabled": true
+            },
+            {
+                "category": "PartitionKeyRUConsumption",
+                "enabled": true
+            }
+        ],
+        "metrics": [
+            {
+                "category": "Requests",
+                "enabled": true
+            }
+        ],
+        "workspaceId": "/subscriptions/.../workspaces/my-workspace"
+    }
+}
+```
 
-Set up Azure Monitor alerts for 429 status codes.
+```csharp
+// Step 2: Key metrics to monitor in Azure Monitor
 
-### 8.4 Integrate Azure Monitor
+// a) Normalized RU Consumption (% of provisioned used)
+// Alert if > 90% sustained - indicates need to scale
 
-**Impact: MEDIUM**
+// b) Total Requests by Status Code
+// Alert on 429s (throttling) and 5xx (errors)
 
-Enable diagnostic settings for comprehensive visibility.
+// c) Server Side Latency
+// Track P50, P99 for performance baselines
 
-### 8.5 Enable Diagnostic Logging
+// d) Data Usage
+// Monitor storage growth
 
-**Impact: LOW-MEDIUM**
+// e) Availability
+// Alert on availability drops below 99.99%
+```
 
-Capture DataPlaneRequests, QueryRuntimeStatistics, PartitionKeyStatistics.
+```csharp
+// Step 3: Application Insights integration
+public static class CosmosDbTelemetry
+{
+    public static void ConfigureWithAppInsights(
+        CosmosClientOptions options, 
+        TelemetryClient telemetry)
+    {
+        // Track all operations as dependencies
+        options.CosmosClientTelemetryOptions = new CosmosClientTelemetryOptions
+        {
+            DisableDistributedTracing = false  // Enable distributed tracing
+        };
+        
+        // Custom handler for detailed telemetry
+        options.CustomHandlers.Add(new AppInsightsHandler(telemetry));
+    }
+}
+
+public class AppInsightsHandler : RequestHandler
+{
+    private readonly TelemetryClient _telemetry;
+    
+    public override async Task<ResponseMessage> SendAsync(
+        RequestMessage request, 
+        CancellationToken cancellationToken)
+    {
+        using var operation = _telemetry.StartOperation<DependencyTelemetry>(
+            "CosmosDB", 
+            request.RequestUri.ToString());
+        
+        operation.Telemetry.Type = "Azure DocumentDB";
+        operation.Telemetry.Target = request.RequestUri.Host;
+        
+        var response = await base.SendAsync(request, cancellationToken);
+        
+        operation.Telemetry.Success = response.IsSuccessStatusCode;
+        operation.Telemetry.ResultCode = ((int)response.StatusCode).ToString();
+        operation.Telemetry.Properties["RU"] = response.Headers.RequestCharge.ToString();
+        
+        return response;
+    }
+}
+```
+
+```kusto
+// Useful Log Analytics queries
+
+// RU consumption by operation
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.DOCUMENTDB"
+| summarize TotalRU = sum(requestCharge_s), 
+            AvgRU = avg(requestCharge_s),
+            Count = count()
+    by OperationName
+| order by TotalRU desc
+
+// Slow queries
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.DOCUMENTDB"
+| where duration_s > 100  // > 100ms
+| project TimeGenerated, OperationName, duration_s, 
+          requestCharge_s, partitionKey_s, querytext_s
+
+// Storage growth trend
+AzureMetrics
+| where ResourceProvider == "MICROSOFT.DOCUMENTDB"
+| where MetricName == "DataUsage"
+| summarize StorageGB = max(Total) / 1073741824 by bin(TimeGenerated, 1d)
+| order by TimeGenerated
+```
+
+Essential alerts to configure:
+1. Throttling (429s) > 0
+2. Normalized RU > 90% for 5 min
+3. Availability < 99.99%
+4. P99 latency > threshold
+5. Storage approaching limits
+
+Reference: [Monitor Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/monitor)
+
+### 8.2 Enable Diagnostic Logging
+
+**Impact: LOW-MEDIUM** (enables troubleshooting)
+
+## Enable Diagnostic Logging
+
+Enable diagnostic logging to capture detailed operation data for troubleshooting. Essential for root cause analysis of production issues.
+
+**Incorrect (no diagnostic logging):**
+
+```csharp
+// When issues occur, you have no data to investigate
+// "Why is this query slow?"
+// "Why did we get throttled yesterday at 3am?"
+// "Which operations are using the most RU?"
+// No answers without logging!
+```
+
+**Correct (comprehensive diagnostic logging):**
+
+```csharp
+// Azure diagnostic settings for detailed logs
+// Enable via Azure Portal > Cosmos DB > Diagnostic settings
+
+// Categories to enable:
+// 1. DataPlaneRequests - All CRUD operations
+// 2. QueryRuntimeStatistics - Query execution details
+// 3. PartitionKeyStatistics - Partition key distribution
+// 4. PartitionKeyRUConsumption - RU by partition
+// 5. ControlPlaneRequests - Management operations
+
+// ARM template for diagnostic settings
+{
+    "type": "Microsoft.Insights/diagnosticSettings",
+    "name": "cosmos-diagnostics",
+    "properties": {
+        "logs": [
+            { "category": "DataPlaneRequests", "enabled": true },
+            { "category": "QueryRuntimeStatistics", "enabled": true },
+            { "category": "PartitionKeyStatistics", "enabled": true },
+            { "category": "PartitionKeyRUConsumption", "enabled": true },
+            { "category": "ControlPlaneRequests", "enabled": true }
+        ],
+        "logAnalyticsDestinationType": "Dedicated",
+        "workspaceId": "[resourceId('Microsoft.OperationalInsights/workspaces', 'my-workspace')]"
+    }
+}
+```
+
+```csharp
+// Application-level diagnostic logging
+public class DiagnosticLoggingRepository
+{
+    private readonly Container _container;
+    private readonly ILogger _logger;
+    
+    public async Task<T> ExecuteWithDiagnostics<T>(
+        string operationName,
+        Func<Task<Response<T>>> operation)
+    {
+        var correlationId = Activity.Current?.Id ?? Guid.NewGuid().ToString();
+        
+        try
+        {
+            var response = await operation();
+            
+            // Always log basic info
+            _logger.LogDebug(
+                "[{CorrelationId}] {Operation}: {RU} RU, {LatencyMs}ms, Status: {Status}",
+                correlationId,
+                operationName,
+                response.RequestCharge,
+                response.Diagnostics.GetClientElapsedTime().TotalMilliseconds,
+                "Success");
+            
+            // Log full diagnostics for slow operations
+            if (response.Diagnostics.GetClientElapsedTime() > TimeSpan.FromMilliseconds(100))
+            {
+                _logger.LogWarning(
+                    "[{CorrelationId}] Slow {Operation}: {Diagnostics}",
+                    correlationId,
+                    operationName,
+                    response.Diagnostics.ToString());
+            }
+            
+            return response.Resource;
+        }
+        catch (CosmosException ex)
+        {
+            _logger.LogError(ex,
+                "[{CorrelationId}] {Operation} failed: Status={Status}, SubStatus={SubStatus}, " +
+                "RU={RU}, RetryAfter={RetryAfter}, ActivityId={ActivityId}, Diagnostics={Diagnostics}",
+                correlationId,
+                operationName,
+                ex.StatusCode,
+                ex.SubStatusCode,
+                ex.RequestCharge,
+                ex.RetryAfter,
+                ex.ActivityId,
+                ex.Diagnostics?.ToString());
+            
+            throw;
+        }
+    }
+}
+```
+
+```csharp
+// Query-specific diagnostics
+public async Task<List<T>> ExecuteQueryWithDiagnostics<T>(
+    string queryName,
+    QueryDefinition query,
+    QueryRequestOptions options = null)
+{
+    options ??= new QueryRequestOptions();
+    options.PopulateIndexMetrics = true;  // Get index usage info
+    
+    var results = new List<T>();
+    var totalRU = 0.0;
+    var pageCount = 0;
+    
+    var iterator = _container.GetItemQueryIterator<T>(query, requestOptions: options);
+    
+    while (iterator.HasMoreResults)
+    {
+        var response = await iterator.ReadNextAsync();
+        results.AddRange(response);
+        totalRU += response.RequestCharge;
+        pageCount++;
+        
+        // Log index metrics (helps identify missing indexes)
+        if (!string.IsNullOrEmpty(response.IndexMetrics))
+        {
+            _logger.LogDebug(
+                "Query '{QueryName}' page {Page} index metrics: {IndexMetrics}",
+                queryName, pageCount, response.IndexMetrics);
+        }
+    }
+    
+    _logger.LogInformation(
+        "Query '{QueryName}': {Count} results, {TotalRU} RU, {Pages} pages",
+        queryName, results.Count, totalRU, pageCount);
+    
+    return results;
+}
+```
+
+Key diagnostic data to capture:
+- Operation name and duration
+- RU consumption
+- Partition key (for hot partition analysis)
+- Full diagnostics for errors/slow operations
+- Index metrics for queries
+- ActivityId (for Azure support)
+
+Reference: [Diagnostic logging](https://learn.microsoft.com/azure/cosmos-db/monitor-resource-logs)
+
+### 8.3 Monitor P99 Latency
+
+**Impact: MEDIUM** (identifies performance issues)
+
+## Monitor P99 Latency
+
+Track P99 (99th percentile) latency to identify performance outliers. Average latency hides tail latency issues that affect user experience.
+
+**Incorrect (only tracking average latency):**
+
+```csharp
+// Average latency looks good: 5ms
+// But P99 could be 500ms - 1% of users have terrible experience!
+
+public async Task<Order> GetOrder(string orderId, string customerId)
+{
+    var sw = Stopwatch.StartNew();
+    var result = await _container.ReadItemAsync<Order>(orderId, pk);
+    sw.Stop();
+    
+    // Only tracking average is misleading
+    _metrics.TrackAverage("CosmosDB.Latency", sw.ElapsedMilliseconds);
+    // Average: 5ms (hides that some requests take 500ms)
+    
+    return result.Resource;
+}
+```
+
+**Correct (tracking latency distribution):**
+
+```csharp
+public async Task<Order> GetOrder(string orderId, string customerId)
+{
+    var sw = Stopwatch.StartNew();
+    var response = await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+    sw.Stop();
+    
+    var clientLatency = sw.ElapsedMilliseconds;
+    var serverLatency = response.Diagnostics.GetClientElapsedTime().TotalMilliseconds;
+    
+    // Track as histogram (enables percentile calculations)
+    _metrics.TrackHistogram("CosmosDB.Latency.Client", clientLatency);
+    _metrics.TrackHistogram("CosmosDB.Latency.Server", serverLatency);
+    
+    // Alert on slow requests
+    if (clientLatency > 100)  // 100ms threshold
+    {
+        _logger.LogWarning(
+            "Slow Cosmos DB read: {LatencyMs}ms, Diagnostics: {Diagnostics}",
+            clientLatency,
+            response.Diagnostics.ToString());
+    }
+    
+    return response.Resource;
+}
+```
+
+```csharp
+// Track percentiles with Application Insights
+public class LatencyTracker
+{
+    private readonly TelemetryClient _telemetry;
+    private readonly ConcurrentBag<double> _recentLatencies = new();
+    private readonly Timer _reportTimer;
+    
+    public LatencyTracker(TelemetryClient telemetry)
+    {
+        _telemetry = telemetry;
+        _reportTimer = new Timer(ReportPercentiles, null, 
+            TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+    }
+    
+    public void RecordLatency(double latencyMs)
+    {
+        _recentLatencies.Add(latencyMs);
+    }
+    
+    private void ReportPercentiles(object state)
+    {
+        var latencies = _recentLatencies.ToArray();
+        _recentLatencies.Clear();
+        
+        if (latencies.Length == 0) return;
+        
+        Array.Sort(latencies);
+        
+        var p50 = GetPercentile(latencies, 50);
+        var p90 = GetPercentile(latencies, 90);
+        var p99 = GetPercentile(latencies, 99);
+        
+        _telemetry.TrackMetric("CosmosDB.Latency.P50", p50);
+        _telemetry.TrackMetric("CosmosDB.Latency.P90", p90);
+        _telemetry.TrackMetric("CosmosDB.Latency.P99", p99);
+        
+        // Alert if P99 exceeds threshold
+        if (p99 > 100)
+        {
+            _telemetry.TrackEvent("HighP99Latency", 
+                new Dictionary<string, string> { { "P99", p99.ToString() } });
+        }
+    }
+    
+    private static double GetPercentile(double[] sorted, int percentile)
+    {
+        var index = (int)Math.Ceiling(percentile / 100.0 * sorted.Length) - 1;
+        return sorted[Math.Max(0, index)];
+    }
+}
+```
+
+```csharp
+// Azure Monitor / Log Analytics query for P99
+// Query to get latency percentiles
+/*
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.DOCUMENTDB"
+| where TimeGenerated > ago(1h)
+| summarize 
+    P50 = percentile(duration_s, 50),
+    P90 = percentile(duration_s, 90),
+    P99 = percentile(duration_s, 99),
+    Max = max(duration_s)
+    by bin(TimeGenerated, 5m), OperationName
+| order by TimeGenerated desc
+*/
+```
+
+What P99 latency reveals:
+- Network issues (high client vs server latency gap)
+- Hot partitions (certain keys slow)
+- Query efficiency problems
+- Cross-partition query overhead
+- Regional routing issues
+
+Target latencies:
+- Point reads: P99 < 10ms (same region)
+- Queries: P99 < 50ms (depends on complexity)
+- Cross-region: Add ~RTT to target
+
+Reference: [Monitor latency](https://learn.microsoft.com/azure/cosmos-db/monitor-server-side-latency)
+
+### 8.4 Track RU Consumption
+
+**Impact: MEDIUM** (enables cost optimization)
+
+## Track RU Consumption
+
+Monitor Request Unit (RU) consumption to optimize costs and identify inefficient operations. Every operation has an RU cost.
+
+**Incorrect (ignoring RU consumption):**
+
+```csharp
+// Operations without tracking cost
+public async Task<Order> GetOrder(string orderId, string customerId)
+{
+    // No visibility into cost
+    return await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+    // Is this costing 1 RU or 100 RU? Unknown!
+}
+```
+
+**Correct (tracking RU at operation level):**
+
+```csharp
+public async Task<Order> GetOrder(string orderId, string customerId)
+{
+    var response = await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+    
+    // Log RU consumption
+    _logger.LogDebug(
+        "Read order {OrderId}: {RU} RU, {Latency}ms",
+        orderId,
+        response.RequestCharge,
+        response.Diagnostics.GetClientElapsedTime().TotalMilliseconds);
+    
+    // Track in metrics/telemetry
+    _telemetry.TrackMetric("CosmosDB.ReadItem.RU", response.RequestCharge, 
+        new Dictionary<string, string> 
+        { 
+            { "Operation", "ReadItem" },
+            { "Container", "orders" }
+        });
+    
+    return response.Resource;
+}
+```
+
+```csharp
+// Track RU for queries (can be high!)
+public async Task<List<Order>> GetCustomerOrders(string customerId)
+{
+    var query = new QueryDefinition("SELECT * FROM c WHERE c.status = @status")
+        .WithParameter("@status", "active");
+    
+    var totalRU = 0.0;
+    var results = new List<Order>();
+    
+    var iterator = _container.GetItemQueryIterator<Order>(
+        query,
+        requestOptions: new QueryRequestOptions 
+        { 
+            PartitionKey = new PartitionKey(customerId),
+            PopulateIndexMetrics = true  // Also get index metrics
+        });
+    
+    while (iterator.HasMoreResults)
+    {
+        var response = await iterator.ReadNextAsync();
+        results.AddRange(response);
+        totalRU += response.RequestCharge;
+        
+        // Log per-page RU
+        _logger.LogDebug(
+            "Query page: {Count} items, {RU} RU, Index: {IndexMetrics}",
+            response.Count,
+            response.RequestCharge,
+            response.IndexMetrics);
+    }
+    
+    // Log total query cost
+    _logger.LogInformation(
+        "GetCustomerOrders: {Total} items, {TotalRU} total RU",
+        results.Count,
+        totalRU);
+    
+    // Alert on expensive queries
+    if (totalRU > 100)
+    {
+        _logger.LogWarning(
+            "Expensive query detected: {TotalRU} RU for {Count} items",
+            totalRU, results.Count);
+    }
+    
+    return results;
+}
+```
+
+```csharp
+// Middleware to track all operations
+public class CosmosDbMetricsHandler : RequestHandler
+{
+    private readonly IMetricTracker _metrics;
+    
+    public override async Task<ResponseMessage> SendAsync(
+        RequestMessage request, 
+        CancellationToken cancellationToken)
+    {
+        var sw = Stopwatch.StartNew();
+        var response = await base.SendAsync(request, cancellationToken);
+        sw.Stop();
+        
+        _metrics.TrackDependency(
+            "CosmosDB",
+            request.RequestUri.ToString(),
+            sw.Elapsed,
+            response.IsSuccessStatusCode,
+            new Dictionary<string, string>
+            {
+                { "RU", response.Headers.RequestCharge.ToString() },
+                { "StatusCode", response.StatusCode.ToString() }
+            });
+        
+        return response;
+    }
+}
+
+// Register handler
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    CustomHandlers = { new CosmosDbMetricsHandler(_metrics) }
+});
+```
+
+Azure Monitor queries for RU analysis:
+```kusto
+// Top expensive operations
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.DOCUMENTDB"
+| summarize TotalRU = sum(requestCharge_s) by OperationName
+| order by TotalRU desc
+
+// RU per partition key (detect hot partitions)
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.DOCUMENTDB"
+| summarize TotalRU = sum(requestCharge_s) by partitionKey_s
+| order by TotalRU desc
+```
+
+Reference: [Monitor RU/s](https://learn.microsoft.com/azure/cosmos-db/monitor-request-unit-usage)
+
+### 8.5 Alert on Throttling (429s)
+
+**Impact: HIGH** (prevents silent failures)
+
+## Alert on Throttling (429s)
+
+Set up alerts for HTTP 429 (Request Rate Too Large) errors. Throttling indicates your application is exceeding provisioned throughput.
+
+**Incorrect (ignoring throttling):**
+
+```csharp
+// SDK retries silently, application seems "slow" but no alerts
+public async Task<Order> GetOrder(string orderId, string customerId)
+{
+    // SDK retries 429s automatically (up to 9 times by default)
+    // But you have no visibility into this happening!
+    return await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+    // Users experience slow responses, you see nothing in logs
+}
+```
+
+**Correct (tracking and alerting on throttling):**
+
+```csharp
+// Option 1: Track via exception handling
+public async Task<Order> GetOrder(string orderId, string customerId)
+{
+    try
+    {
+        var response = await _container.ReadItemAsync<Order>(orderId, new PartitionKey(customerId));
+        return response.Resource;
+    }
+    catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.TooManyRequests)
+    {
+        // This fires only after ALL retries exhausted
+        _logger.LogError(
+            "Throttled after max retries! RetryAfter: {RetryAfter}s, Diagnostics: {Diagnostics}",
+            ex.RetryAfter?.TotalSeconds,
+            ex.Diagnostics?.ToString());
+        
+        _metrics.IncrementCounter("CosmosDB.ThrottledRequests");
+        throw;
+    }
+}
+
+// Option 2: Custom handler to track all 429s (even those retried)
+public class ThrottlingTracker : RequestHandler
+{
+    private readonly ILogger _logger;
+    private readonly IMetricTracker _metrics;
+    
+    public override async Task<ResponseMessage> SendAsync(
+        RequestMessage request, 
+        CancellationToken cancellationToken)
+    {
+        var response = await base.SendAsync(request, cancellationToken);
+        
+        if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        {
+            _logger.LogWarning(
+                "429 Throttled: {Uri}, RetryAfter: {RetryAfter}",
+                request.RequestUri,
+                response.Headers.RetryAfter);
+            
+            _metrics.IncrementCounter("CosmosDB.429.Total");
+        }
+        
+        return response;
+    }
+}
+
+// Register handler
+var client = new CosmosClient(connectionString, new CosmosClientOptions
+{
+    CustomHandlers = { new ThrottlingTracker(_logger, _metrics) }
+});
+```
+
+```csharp
+// Azure Monitor alert rule for throttling
+// Create alert in Azure Portal or via ARM:
+{
+    "type": "Microsoft.Insights/metricAlerts",
+    "properties": {
+        "criteria": {
+            "odata.type": "Microsoft.Azure.Monitor.SingleResourceMultipleMetricCriteria",
+            "allOf": [
+                {
+                    "name": "TotalRequests429",
+                    "metricName": "TotalRequests",
+                    "dimensions": [
+                        {
+                            "name": "StatusCode",
+                            "operator": "Include",
+                            "values": ["429"]
+                        }
+                    ],
+                    "operator": "GreaterThan",
+                    "threshold": 0,
+                    "timeAggregation": "Total"
+                }
+            ]
+        },
+        "actions": [
+            {
+                "actionGroupId": "/subscriptions/.../actionGroups/ops-team"
+            }
+        ],
+        "severity": 2,
+        "windowSize": "PT5M",
+        "evaluationFrequency": "PT1M"
+    }
+}
+```
+
+```kusto
+// Log Analytics query for throttling analysis
+AzureDiagnostics
+| where ResourceProvider == "MICROSOFT.DOCUMENTDB"
+| where statusCode_s == "429"
+| summarize ThrottledCount = count() by 
+    bin(TimeGenerated, 5m),
+    partitionKeyRangeId_s,
+    OperationName
+| order by TimeGenerated desc
+
+// Identify which partition keys are throttling
+AzureDiagnostics
+| where statusCode_s == "429"
+| summarize Count = count() by partitionKey_s
+| order by Count desc
+| take 10
+```
+
+Response to throttling:
+1. **Immediate**: SDK retries automatically
+2. **Short-term**: Scale up throughput (manual or autoscale)
+3. **Long-term**: 
+   - Optimize queries to use less RU
+   - Review partition key for hot partitions
+   - Consider autoscale for variable workloads
+
+Reference: [Monitor throttling](https://learn.microsoft.com/azure/cosmos-db/monitor-normalized-request-units)
 
 ---
 
