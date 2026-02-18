@@ -22,16 +22,20 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
    - 1.1 [Keep Items Well Under 2MB Limit](#11-keep-items-well-under-2mb-limit)
    - 1.2 [Denormalize for Read-Heavy Workloads](#12-denormalize-for-read-heavy-workloads)
    - 1.3 [Embed Related Data Retrieved Together](#13-embed-related-data-retrieved-together)
-   - 1.4 [Reference Data When Items Grow Large](#14-reference-data-when-items-grow-large)
-   - 1.5 [Version Your Document Schemas](#15-version-your-document-schemas)
-   - 1.6 [Use Type Discriminators for Polymorphic Data](#16-use-type-discriminators-for-polymorphic-data)
+   - 1.4 [Follow ID Value Length and Character Constraints](#14-follow-id-value-length-and-character-constraints)
+   - 1.5 [Stay Within 128-Level Nesting Depth Limit](#15-stay-within-128-level-nesting-depth-limit)
+   - 1.6 [Understand IEEE 754 Numeric Precision Limits](#16-understand-ieee-754-numeric-precision-limits)
+   - 1.7 [Reference Data When Items Grow Large](#17-reference-data-when-items-grow-large)
+   - 1.8 [Version Your Document Schemas](#18-version-your-document-schemas)
+   - 1.9 [Use Type Discriminators for Polymorphic Data](#19-use-type-discriminators-for-polymorphic-data)
 2. [Partition Key Design](#2-partition-key-design) — **CRITICAL**
    - 2.1 [Plan for 20GB Logical Partition Limit](#21-plan-for-20gb-logical-partition-limit)
    - 2.2 [Distribute Writes to Avoid Hot Partitions](#22-distribute-writes-to-avoid-hot-partitions)
    - 2.3 [Use Hierarchical Partition Keys for Flexibility](#23-use-hierarchical-partition-keys-for-flexibility)
    - 2.4 [Choose High-Cardinality Partition Keys](#24-choose-high-cardinality-partition-keys)
-   - 2.5 [Align Partition Key with Query Patterns](#25-align-partition-key-with-query-patterns)
-   - 2.6 [Create Synthetic Partition Keys When Needed](#26-create-synthetic-partition-keys-when-needed)
+   - 2.5 [Respect Partition Key Value Length Limits](#25-respect-partition-key-value-length-limits)
+   - 2.6 [Align Partition Key with Query Patterns](#26-align-partition-key-with-query-patterns)
+   - 2.7 [Create Synthetic Partition Keys When Needed](#27-create-synthetic-partition-keys-when-needed)
 3. [Query Optimization](#3-query-optimization) — **HIGH**
    - 3.1 [Minimize Cross-Partition Queries](#31-minimize-cross-partition-queries)
    - 3.2 [Avoid Full Container Scans](#32-avoid-full-container-scans)
@@ -286,7 +290,291 @@ Embed when:
 
 Reference: [Data modeling in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)
 
-### 1.4 Reference Data When Items Grow Large
+### 1.4 Follow ID Value Length and Character Constraints
+
+**Impact: HIGH** (prevents write failures and cross-SDK interoperability issues)
+
+## Follow ID Value Length and Character Constraints
+
+Azure Cosmos DB enforces a **1,023 byte** maximum for the `id` property and restricts certain characters. Using non-alphanumeric characters causes interoperability problems across SDKs, connectors, and tools.
+
+**Incorrect (oversized or problematic IDs):**
+
+```csharp
+// Anti-pattern 1: ID derived from unbounded user input
+public class Document
+{
+    // ID could exceed 1,023 bytes if title is very long
+    public string Id => $"{Category}_{SubCategory}_{Title}_{Description}";
+    public string Category { get; set; }
+    public string SubCategory { get; set; }
+    public string Title { get; set; }
+    public string Description { get; set; }  // Unbounded!
+}
+
+// Anti-pattern 2: IDs containing forbidden or problematic characters
+var doc = new Document
+{
+    Id = "files/reports\\2026/Q1",  // Contains '/' and '\' - FORBIDDEN
+    Content = "..."
+};
+await container.CreateItemAsync(doc);
+// Fails or causes routing issues
+
+// Anti-pattern 3: Non-ASCII characters in IDs
+var doc2 = new Document
+{
+    Id = "レポート_2026_データ",  // Non-ASCII - interoperability risk
+    Content = "..."
+};
+// Works in some SDKs but may break in ADF, Spark, Kafka connectors
+```
+
+**Correct (safe, bounded IDs):**
+
+```csharp
+// Use GUIDs or short alphanumeric identifiers
+public class Document
+{
+    public string Id { get; set; }
+    public string Category { get; set; }
+    public string Title { get; set; }
+}
+
+// Option 1: GUID-based IDs (always safe, always unique)
+var doc = new Document
+{
+    Id = Guid.NewGuid().ToString(),  // "a1b2c3d4-e5f6-..."
+    Category = "reports",
+    Title = "Q1 Report"
+};
+
+// Option 2: Compact, deterministic IDs from business keys
+var doc2 = new Document
+{
+    Id = $"report-{tenantId}-{DateTime.UtcNow:yyyyMMdd}-{sequenceNum}",
+    Category = "reports",
+    Title = "Q1 Report"
+};
+
+// Option 3: Base64-encode when you must derive from non-ASCII data
+var rawId = "レポート_2026_データ";
+var doc3 = new Document
+{
+    Id = Convert.ToBase64String(Encoding.UTF8.GetBytes(rawId))
+            .Replace('/', '_').Replace('+', '-'),  // URL-safe Base64
+    Category = "reports",
+    Title = rawId  // Keep original value as a property
+};
+```
+
+Key constraints:
+- **Max length:** 1,023 bytes
+- **Forbidden characters:** `/` and `\` are not allowed
+- **Best practice:** Use only alphanumeric ASCII characters (`a-z`, `A-Z`, `0-9`, `-`, `_`)
+- **Why:** Some SDK versions, Azure Data Factory, Spark connector, and Kafka connector have known issues with non-alphanumeric IDs
+- Encode non-ASCII IDs with Base64 + custom encoding if needed for interoperability
+
+Reference: [Azure Cosmos DB service quotas - Per-item limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-item-limits)
+
+### 1.5 Stay Within 128-Level Nesting Depth Limit
+
+**Impact: MEDIUM** (prevents document rejection on deeply nested structures)
+
+## Stay Within 128-Level Nesting Depth Limit
+
+Azure Cosmos DB allows a maximum of **128 levels** of nesting for embedded objects and arrays. While 128 is generous, recursive or auto-generated structures can exceed this limit unexpectedly.
+
+**Incorrect (risk of exceeding nesting limit):**
+
+```csharp
+// Anti-pattern 1: Recursive tree stored as deeply nested JSON
+public class TreeNode
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    
+    // Recursive children - each level adds nesting depth
+    public List<TreeNode> Children { get; set; }
+}
+
+// A category hierarchy with 130+ levels will fail on write
+var root = BuildDeepTree(depth: 150);  // Exceeds 128 levels!
+await container.CreateItemAsync(root);
+// Microsoft.Azure.Cosmos.CosmosException: Document nesting depth exceeds limit
+
+// Anti-pattern 2: Deeply nested auto-generated JSON from ORMs
+// Serializing complex object graphs without cycle detection
+var entity = LoadEntityWithAllRelations();  // Lazy-loaded relations
+var json = JsonSerializer.Serialize(entity);  // May create deep nesting
+```
+
+**Correct (bounded nesting depth):**
+
+```csharp
+// Solution 1: Flatten deep hierarchies using path-based approach
+public class CategoryNode
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public string ParentId { get; set; }
+    
+    // Materialized path captures hierarchy without nesting
+    public string Path { get; set; }  // e.g., "/root/electronics/phones/android"
+    public int Depth { get; set; }
+    
+    // Only store immediate children IDs, not nested objects
+    public List<string> ChildIds { get; set; }
+}
+
+// Each node is a flat document, hierarchy expressed via Path and ParentId
+var node = new CategoryNode
+{
+    Id = "cat-android",
+    Name = "Android",
+    ParentId = "cat-phones",
+    Path = "/root/electronics/phones/android",
+    Depth = 3,
+    ChildIds = new List<string> { "cat-samsung", "cat-pixel" }
+};
+```
+
+```csharp
+// Solution 2: Cap nesting depth when building recursive structures
+public class TreeNode
+{
+    public string Id { get; set; }
+    public string Name { get; set; }
+    public List<TreeNode> Children { get; set; }
+}
+
+// Limit nesting at serialization time
+public static TreeNode TruncateTree(TreeNode node, int maxDepth, int currentDepth = 0)
+{
+    if (currentDepth >= maxDepth || node.Children == null)
+    {
+        node.Children = null;  // Stop nesting here
+        return node;
+    }
+    
+    node.Children = node.Children
+        .Select(c => TruncateTree(c, maxDepth, currentDepth + 1))
+        .ToList();
+    return node;
+}
+
+// Keep well under 128 - aim for practical limits like 10-20
+var safeTree = TruncateTree(root, maxDepth: 20);
+await container.CreateItemAsync(safeTree);
+```
+
+Key points:
+- Maximum nesting depth is **128 levels** for embedded objects/arrays
+- Recursive data structures (trees, graphs) are the most common cause of violations
+- Prefer flat representations with references (parent IDs, materialized paths) for deep hierarchies
+- If nesting is required, enforce a practical depth cap well under 128
+
+Reference: [Azure Cosmos DB service quotas - Per-item limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-item-limits)
+
+### 1.6 Understand IEEE 754 Numeric Precision Limits
+
+**Impact: MEDIUM** (prevents silent data loss on large or precise numbers)
+
+## Understand IEEE 754 Numeric Precision Limits
+
+Azure Cosmos DB stores numbers using **IEEE 754 double-precision 64-bit** format. This means integers larger than 2^53 and decimals requiring more than ~15-17 significant digits will lose precision silently.
+
+**Incorrect (precision loss with large numbers):**
+
+```csharp
+// Anti-pattern 1: Storing large integers that exceed safe range
+public class Transaction
+{
+    public string Id { get; set; }
+    
+    // 64-bit integer IDs from external systems - DANGER!
+    public long ExternalTransactionId { get; set; }  // e.g., 9007199254740993
+    // Values > 9,007,199,254,740,992 (2^53) lose precision
+    // 9007199254740993 becomes 9007199254740992 silently!
+}
+
+// Anti-pattern 2: Financial calculations requiring exact decimal precision
+public class Invoice
+{
+    public string Id { get; set; }
+    
+    // Double can't represent all decimal values exactly
+    public double Amount { get; set; }  // 0.1 + 0.2 != 0.3 in IEEE 754
+    public double TaxRate { get; set; }
+}
+
+// 99999999999999.99 stored as double may become 99999999999999.98
+```
+
+**Correct (preserving precision):**
+
+```csharp
+// Solution 1: Store large integers and precise decimals as strings
+public class Transaction
+{
+    public string Id { get; set; }
+    
+    // Store large IDs as strings to preserve all digits
+    [JsonPropertyName("externalTransactionId")]
+    public string ExternalTransactionId { get; set; }  // "9007199254740993"
+}
+
+// Solution 2: Use string representation for financial amounts
+public class Invoice
+{
+    public string Id { get; set; }
+    
+    // Store monetary values as strings with fixed decimal places
+    [JsonPropertyName("amount")]
+    public string Amount { get; set; }  // "99999999999999.99"
+    
+    [JsonPropertyName("taxRate")]
+    public string TaxRate { get; set; }  // "0.0825"
+    
+    // Parse in application code for calculations
+    public decimal GetAmount() => decimal.Parse(Amount);
+    public decimal GetTaxRate() => decimal.Parse(TaxRate);
+}
+```
+
+```csharp
+// Solution 3: Store amounts as integer minor units (cents, paise, etc.)
+public class Payment
+{
+    public string Id { get; set; }
+    
+    // Store $199.99 as 19999 cents - always safe as integer within 2^53
+    public long AmountInCents { get; set; }
+    public string Currency { get; set; }  // "USD"
+    
+    // Helper for display
+    public decimal GetDisplayAmount() => AmountInCents / 100m;
+}
+
+var payment = new Payment
+{
+    Id = Guid.NewGuid().ToString(),
+    AmountInCents = 19999,  // $199.99
+    Currency = "USD"
+};
+await container.CreateItemAsync(payment);
+```
+
+Key points:
+- **Safe integer range:** -2^53 to 2^53 (±9,007,199,254,740,992)
+- **Significant digits:** ~15-17 decimal digits of precision
+- Store large integers (snowflake IDs, blockchain hashes) as **strings**
+- Store financial/monetary values as **strings** or **integer minor units** (cents)
+- Numbers within the safe range (most counters, ages, quantities) are fine as-is
+
+Reference: [Azure Cosmos DB service quotas - Per-item limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-item-limits)
+
+### 1.7 Reference Data When Items Grow Large
 
 **Impact: CRITICAL** (prevents hitting 2MB limit)
 
@@ -353,7 +641,7 @@ Use references when:
 
 Reference: [Model document data](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data#referencing-data)
 
-### 1.5 Version Your Document Schemas
+### 1.8 Version Your Document Schemas
 
 **Impact: MEDIUM** (enables safe schema evolution)
 
@@ -437,7 +725,7 @@ Always increment version when:
 
 Reference: [Schema evolution in Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)
 
-### 1.6 Use Type Discriminators for Polymorphic Data
+### 1.9 Use Type Discriminators for Polymorphic Data
 
 **Impact: MEDIUM** (enables efficient single-container design)
 
@@ -875,7 +1163,86 @@ Good partition keys typically:
 
 Reference: [Partitioning in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/partitioning-overview)
 
-### 2.5 Align Partition Key with Query Patterns
+### 2.5 Respect Partition Key Value Length Limits
+
+**Impact: HIGH** (prevents write failures from oversized keys)
+
+## Respect Partition Key Value Length Limits
+
+Azure Cosmos DB enforces a maximum partition key value length of **2,048 bytes** (or **101 bytes** if large partition keys are not enabled). Exceeding this limit causes write failures at runtime.
+
+**Incorrect (risk of exceeding partition key length):**
+
+```csharp
+// Anti-pattern: concatenating many fields into a partition key
+public class Document
+{
+    public string Id { get; set; }
+    
+    // Partition key built from long descriptions - DANGER!
+    public string PartitionKey => $"{TenantName}_{DepartmentName}_{TeamName}_{ProjectDescription}";
+    
+    public string TenantName { get; set; }       // Could be very long
+    public string DepartmentName { get; set; }
+    public string TeamName { get; set; }
+    public string ProjectDescription { get; set; } // Unbounded user input
+}
+
+// If PartitionKey exceeds 2,048 bytes:
+// Microsoft.Azure.Cosmos.CosmosException: Partition key value is too large
+```
+
+**Correct (bounded partition key values):**
+
+```csharp
+// Use short, bounded identifiers for partition keys
+public class Document
+{
+    public string Id { get; set; }
+    
+    // Short, deterministic IDs - always well under 2,048 bytes
+    public string TenantId { get; set; }        // e.g., "t-abc123"
+    public string DepartmentId { get; set; }    // e.g., "dept-42"
+    
+    // Partition key uses compact identifiers
+    public string PartitionKey => $"{TenantId}_{DepartmentId}";
+    
+    // Keep long text as regular properties, not in the partition key
+    public string TenantName { get; set; }
+    public string DepartmentName { get; set; }
+    public string ProjectDescription { get; set; }
+}
+```
+
+```csharp
+// If you must derive a key from long values, hash or truncate them
+public class Document
+{
+    public string Id { get; set; }
+    public string LongCategoryPath { get; set; }  // e.g., deep taxonomy
+    
+    // Hash long values to a fixed-length partition key
+    public string PartitionKey
+    {
+        get
+        {
+            using var sha = System.Security.Cryptography.SHA256.Create();
+            var hash = sha.ComputeHash(Encoding.UTF8.GetBytes(LongCategoryPath));
+            return Convert.ToBase64String(hash)[..16]; // Fixed 16-char key
+        }
+    }
+}
+```
+
+Key points:
+- Default limit is **101 bytes** without large partition key feature enabled
+- With large partition keys enabled, limit increases to **2,048 bytes**
+- Enable large partition keys for new containers if you need longer values
+- Prefer short GUIDs, IDs, or codes over human-readable strings for partition keys
+
+Reference: [Azure Cosmos DB service quotas - Per-item limits](https://learn.microsoft.com/azure/cosmos-db/concepts-limits#per-item-limits)
+
+### 2.6 Align Partition Key with Query Patterns
 
 **Impact: CRITICAL** (enables single-partition queries)
 
@@ -959,7 +1326,7 @@ public class Message
 
 Reference: [Choose a partition key](https://learn.microsoft.com/azure/cosmos-db/partitioning-overview#choose-a-partition-key)
 
-### 2.6 Create Synthetic Partition Keys When Needed
+### 2.7 Create Synthetic Partition Keys When Needed
 
 **Impact: HIGH** (optimizes for multiple access patterns)
 
