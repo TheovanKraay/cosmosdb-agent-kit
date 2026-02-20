@@ -104,4 +104,6 @@ public class Order
    | Prefix queries | Inefficient (cross-partition) | Efficient (targeted) |
    | Availability | All tiers | Dedicated tier only |
 
-Reference: [Synthetic partition keys](https://learn.microsoft.com/azure/cosmos-db/nosql/synthetic-partition-keys)
+References:
+- [Synthetic partition keys](https://learn.microsoft.com/azure/cosmos-db/nosql/synthetic-partition-keys)
+- [Hierarchical partition keys (HPK)](https://learn.microsoft.com/azure/cosmos-db/nosql/hierarchical-partition-keys)
