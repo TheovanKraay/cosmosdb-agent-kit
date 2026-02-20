@@ -1487,9 +1487,9 @@ public class Order
 }
 ```
 
-**"Evaluate Hierarchical Partition Keys (HPK)" when considering Synthetic Partiton keys**:
+**"Evaluate Hierarchical Partition Keys (HPK)" when considering Synthetic Partition keys**:
 
-   When suggesting synthetic partition keys as part of design - evaluate **Hierarchical Partition Keys (HPK)** for alternative efficient multi-level query boundaries without without synthetic key complexity. 
+   When suggesting synthetic partition keys as part of design - evaluate **Hierarchical Partition Keys (HPK)** for alternative efficient multi-level query boundaries without synthetic key complexity. 
    *(HPK supports prefix-based efficient where cross-partition queries that synthetic keys cannot.)*
 
 ** Synthetic Key vs Hierarchical PK - Comparison table:**
