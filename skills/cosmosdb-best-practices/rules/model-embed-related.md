@@ -50,4 +50,16 @@ Embed when:
 - Embedded data changes infrequently
 - Embedded data is bounded in size
 
+
+*Consider following **Aggregate Decision Framework** for embedding vs referencing:*
+1. **Access Correlation Thresholds** 
+   - \>90% accessed together → Strong single-document aggregate candidate (embed)
+   - 50–90% accessed together → Multi-document container aggregate candidate (same container, separate docs, shared partition key)
+   - <50% accessed together → Separate containers
+
+2. **Constraint Checks** :
+   - Size: Will combined size exceed 1MB? → Force multi-document or separate containers for child documents
+   - Updates: Different update frequencies? → Consider multi-document
+   - Atomicity: Need transactional updates? → Favor same partition with small batched updates or distributed transactional outbox pattern
+
 Reference: [Data modeling in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)

@@ -5,9 +5,9 @@ impactDescription: eliminates cross-partition query overhead for admin/analytics
 tags: pattern, change-feed, materialized-views, cross-partition, query-optimization
 ---
 
-## Use Change Feed for Materialized Views
+## Use Change Feed for Materialized Views or Global Secondary Index
 
-When your application requires frequent cross-partition queries (e.g., admin dashboards, analytics), consider using Change Feed to maintain materialized views in a separate container optimized for those query patterns.
+When your application requires frequent cross-partition queries (e.g., admin dashboards, analytics, frequent lookups by secondary non-PK attributes), you have two main options: use Change Feed to maintain materialized views in a separate container optimized for those query patterns, or use the new Global Secondary Index (GSI).
 
 **Problem: Cross-partition queries are expensive**
 
@@ -192,5 +192,8 @@ var query = ordersByStatusContainer.GetItemQueryIterator<OrderStatusView>(
 - Updates are eventually consistent (typically <1 second delay)
 - Use lease container to track processor progress (enables resume after failures)
 - Consider Azure Functions with Cosmos DB trigger for serverless implementation
+- Consider Global Secondary Index (GSI) implementation as alternative for automatic sync between containers with different partition keys. 
 
-Reference: [Change feed in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/change-feed)
+Reference(s): 
+[Change feed in Azure Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/change-feed)
+[Global Secondary Indexes (GSI) in Azure Cosmos DB](https://learn.microsoft.com/en-us/azure/cosmos-db/global-secondary-indexes)

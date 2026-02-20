@@ -71,4 +71,28 @@ Denormalize when:
 - Denormalized data changes infrequently
 - Query patterns benefit from co-located data
 
+*Additional strategies to consider for denormalization*:
+**Short-Circuit Denormalization** :
+   - Definition: Duplicate *only specific fields* (not the full related document) to avoid a cross-partition lookup
+   - When to use:
+     - The duplicated property is mostly immutable (e.g., product name) or the app can tolerate staleness
+     - The property is small (a string, not an object)
+     - The access pattern would otherwise require a cross-partition read
+   - Example: Copy `customerName` into Order doc to avoid looking up the Customer doc
+
+**Workload-Driven Cost Comparison Template for Denormalization Strategy** :
+   ```
+   Option 1 — Denormalized:
+     Read cost:  [read_RPS] × [RU_per_read] = X RU/s
+     Write cost: [write_RPS] × [RU_per_write] + [update_propagation_cost] = Y RU/s
+     Total: X + Y RU/s
+
+   Option 2 — Normalized:
+     Read cost:  [read_RPS] × ([RU_per_read] + [RU_for_lookup]) = X' RU/s
+     Write cost: [write_RPS] × [RU_per_write] = Y' RU/s
+     Total: X' + Y' RU/s
+
+   Decision: Choose option with lower total RU/s when workload profile details available
+   ```
+
 Reference: [Denormalization patterns](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data#denormalization)

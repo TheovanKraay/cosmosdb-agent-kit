@@ -85,4 +85,14 @@ Monitor for hot partitions:
 - Look for partitions consistently at 100%
 - Use Azure Monitor alerts for throttling
 
-Reference: [Design for partition hot-spotting](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data#design-for-partition-key-hot-spots)
+**Partition Limits (as of current Azure Cosmos DB documentation):**
+   - Physical partition throughput limit: **10,000 RU/s** per physical partition  
+     See [Azure Cosmos DB partitioning – physical partitions](https://learn.microsoft.com/azure/cosmos-db/partitioning-overview#physical-partitions).
+   - Logical partition size limit: **20 GB** per logical partition  
+     See [Azure Cosmos DB partitioning – logical partitions](https://learn.microsoft.com/azure/cosmos-db/partitioning-overview#logical-partitions).
+   - Physical partition size: **50 GB** per physical partition  
+     See [Azure Cosmos DB partitioning – physical partitions](https://learn.microsoft.com/azure/cosmos-db/partitioning-overview#physical-partitions).
+
+   > These limits can evolve over time and may vary by region/offer. Always confirm against the latest Azure Cosmos DB documentation for your account.
+
+**Popularity Skew Warning for Hot Partitions:** Even high-cardinality keys (like `user_id`) can create hot partitions when specific values get dramatically more traffic (e.g., a viral user during peak moments).
