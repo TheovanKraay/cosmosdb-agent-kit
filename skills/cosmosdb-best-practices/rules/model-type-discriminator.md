@@ -87,7 +87,7 @@ Benefits:
 - Clear deserialization logic
 - Self-documenting data structure
 
-**"When NOT to Use Multi-Entity Containers"** :
+**When NOT to Use Multi-Entity Containers** :
    - Independent throughput requirements → Use separate containers
    - Different scaling patterns → Use separate containers
    - Different indexing needs → Use separate containers
@@ -99,6 +99,5 @@ Benefits:
    - One throughput allocation for all entity types
    - One change feed with mixed events requiring filtering
    - Difficult to maintain and onboard new developers
-
 
 Reference: [Model data in Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)

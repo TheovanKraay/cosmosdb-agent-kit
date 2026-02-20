@@ -848,7 +848,7 @@ Benefits:
 - Clear deserialization logic
 - Self-documenting data structure
 
-**"When NOT to Use Multi-Entity Containers"** :
+**When NOT to Use Multi-Entity Containers** :
    - Independent throughput requirements → Use separate containers
    - Different scaling patterns → Use separate containers
    - Different indexing needs → Use separate containers
@@ -860,7 +860,6 @@ Benefits:
    - One throughput allocation for all entity types
    - One change feed with mixed events requiring filtering
    - Difficult to maintain and onboard new developers
-
 
 Reference: [Model data in Cosmos DB](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)
 
@@ -1479,7 +1478,7 @@ public class Order
 }
 ```
 
-**"Evaluate Hierarchical Partition Keys (HPK)" when considering Synthetic Partition keys**:
+**Evaluate Hierarchical Partition Keys (HPK) when considering Synthetic Partition keys**:
 
    When suggesting synthetic partition keys as part of design, evaluate **Hierarchical Partition Keys (HPK)** as an alternative that provides efficient multi-level query boundaries without synthetic key complexity. 
    *(HPK natively supports efficient prefix-based cross-partition queries that synthetic keys cannot.)*
@@ -1491,11 +1490,12 @@ public class Order
    | Query boundaries | Manual `STARTSWITH()` | Native prefix queries |
    | Key construction | Application-level string concat | Cosmos DB native |
    | Prefix queries | Inefficient (cross-partition) | Efficient (targeted) |
-   | Availability | All tiers | Dedicated tier only |
-
+   
 References:
 - [Synthetic partition keys](https://learn.microsoft.com/azure/cosmos-db/nosql/synthetic-partition-keys)
 - [Hierarchical partition keys (HPK)](https://learn.microsoft.com/azure/cosmos-db/nosql/hierarchical-partition-keys)
+ 
+ *Additional HPK Considerations*: Evaluate HPK limitations and known issues for some SDKs, various connectors and account for Hierarchical Cardinality requirements of all levels.
 
 ---
 
