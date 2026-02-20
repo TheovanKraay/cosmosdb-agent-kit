@@ -95,4 +95,4 @@ Monitor for hot partitions:
 
    > These limits can evolve over time and may vary by region/offer. Always confirm against the latest Azure Cosmos DB documentation for your account.
 
-**Physical Partition Count (rule‑of‑thumb sizing):**
+**Popularity Skew Warning for Hot Partitions:** Even high-cardinality keys (like `user_id`) can create hot partitions when specific values get dramatically more traffic (e.g., a viral user during peak moments).
