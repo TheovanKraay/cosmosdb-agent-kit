@@ -3,4 +3,7 @@ node_modules/
 *.log
 # Testing iteration extracted source (keep only zips)
 testing/scenarios/**/iterations/**/ecommerce-order-api/
-testing/scenarios/**/iterations/**/target/
+testing/scenarios/**/iterations/**/target/__pycache__/
+# Python cache
+**/__pycache__/
+*.pyc

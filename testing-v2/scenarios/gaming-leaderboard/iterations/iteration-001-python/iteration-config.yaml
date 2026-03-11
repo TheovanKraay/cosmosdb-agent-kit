@@ -1,0 +1,16 @@
+language: python
+
+# Database name the app creates/uses — must match DATABASE_NAME in main.py
+database: gaming-leaderboard
+
+# Port the application listens on
+port: 8000
+
+# Health endpoint path
+health: /health
+
+# Build: install Python dependencies
+build: pip install -r requirements.txt
+
+# Run: start the FastAPI app with uvicorn
+run: uvicorn main:app --host 0.0.0.0 --port 8000
