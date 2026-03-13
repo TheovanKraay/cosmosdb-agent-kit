@@ -1,0 +1,8 @@
+# Iteration Config for E-Commerce Order API - Python (Control Run)
+language: python
+database: ecommerce-order-api
+port: 8000
+health: /health
+build: pip install -r requirements.txt
+run: uvicorn main:app --host 0.0.0.0 --port 8000
+skills_loaded: false
