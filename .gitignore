@@ -4,3 +4,4 @@ node_modules/
 # Testing iteration extracted source (keep only zips)
 testing/scenarios/**/iterations/**/ecommerce-order-api/
 testing/scenarios/**/iterations/**/target/
+__pycache__/
