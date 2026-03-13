@@ -4,3 +4,5 @@ node_modules/
 # Testing iteration extracted source (keep only zips)
 testing/scenarios/**/iterations/**/ecommerce-order-api/
 testing/scenarios/**/iterations/**/target/
+# Java build artifacts for testing-v2 iterations
+testing-v2/scenarios/**/iterations/**/target/
