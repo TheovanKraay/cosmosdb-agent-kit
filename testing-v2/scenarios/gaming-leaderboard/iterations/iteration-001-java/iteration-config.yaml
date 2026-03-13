@@ -1,0 +1,13 @@
+language: java
+
+database: gaming-leaderboard-db
+
+port: 8080
+
+health: /health
+
+build: mvn package -DskipTests
+
+run: java -jar target/gaming-leaderboard-0.0.1-SNAPSHOT.jar
+
+skills_loaded: false
