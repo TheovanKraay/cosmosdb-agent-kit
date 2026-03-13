@@ -49,7 +49,7 @@ class UpdateStatusRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Cosmos DB initialisation
+# Cosmos DB initialization
 # ---------------------------------------------------------------------------
 
 client = CosmosClient(COSMOS_ENDPOINT, credential=COSMOS_KEY)
