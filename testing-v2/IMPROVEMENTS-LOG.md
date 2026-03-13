@@ -1118,3 +1118,13 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-13: iteration-001-python - Gaming Leaderboard (Python) [CONTROL - no skills]
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: iteration-001-python
+- **Skills loaded**: No (control run)
+- **Result**: SUCCESSFUL -- 34/34 tests passed (100%)
+- **Score**: 10/10
+
+**Test Results**: 34 passed, 0 failed out of 34
