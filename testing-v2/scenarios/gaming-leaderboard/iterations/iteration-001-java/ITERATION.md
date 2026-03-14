@@ -34,21 +34,18 @@
 
 ## Test Results
 
-**Pass rate: 98.3%** (58/59 tests passed (98.3%))
+**Pass rate: 100.0%** (All 59 tests passed)
 
 | Status | Count |
 |--------|-------|
-| Passed | 58 |
-| Failed | 1 |
+| Passed | 59 |
+| Failed | 0 |
 | Errors | 0 |
 | Skipped | 0 |
 
-### Failures
+### All tests passed
 
-- **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestInvalidInput::test_submit_score_negative_value_returns_4xx**
-  > AssertionError: Negative score should return 4xx, got 201. Scores should be positive integers per the contract.
-assert 400 <= 201
- +  where 201 = <Response [201]>.status_code
+The generated application fully conforms to the API contract.
 
 ## Source Files
 
@@ -58,5 +55,5 @@ Source code archived in `source-code.zip` (30 files).
 
 | Category | Score | Notes |
 |----------|-------|-------|
-| API Conformance | 9/10 | 98.3% pass rate |
-| **Overall** | **9/10** | **58/59 tests passed (98.3%)** |
+| API Conformance | 10/10 | 100.0% pass rate |
+| **Overall** | **10/10** | **All 59 tests passed** |

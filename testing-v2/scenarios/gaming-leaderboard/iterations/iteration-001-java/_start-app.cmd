@@ -1,2 +1,0 @@
-@echo off
-java -jar target/gaming-leaderboard-1.0.0.jar > "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\app-output.log" 2> "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\app-error.log"
