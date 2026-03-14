@@ -1,0 +1,7 @@
+language: java
+database: ecommerce-order-api
+port: 8080
+health: /health
+build: mvn package -DskipTests
+run: java -jar target/*.jar
+skills_loaded: false
