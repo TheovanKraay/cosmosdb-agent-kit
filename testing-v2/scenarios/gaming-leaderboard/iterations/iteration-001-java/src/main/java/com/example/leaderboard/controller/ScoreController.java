@@ -37,6 +37,11 @@ public class ScoreController {
                     .body(Map.of("error", "score must be a number"));
         }
 
+        if (score < 0) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "score must be a positive integer"));
+        }
+
         try {
             Score scoreRecord = leaderboardService.submitScore(playerId, score, gameMode);
             return ResponseEntity.status(HttpStatus.CREATED).body(scoreRecord);
