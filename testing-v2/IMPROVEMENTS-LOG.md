@@ -1118,3 +1118,16 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-14: iteration-001-java - Gaming Leaderboard (Java) [CONTROL - no skills]
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: iteration-001-java
+- **Skills loaded**: No (control run)
+- **Result**: PARTIAL -- 58/59 tests passed (98.3%)
+- **Score**: 9/10
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestInvalidInput::test_submit_score_negative_value_returns_4xx** -- AssertionError: Negative score should return 4xx, got 201. Scores should be positive integers per th
+
+**Test Results**: 58 passed, 1 failed out of 59

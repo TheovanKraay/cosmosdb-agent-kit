@@ -1,0 +1,11 @@
+com\example\leaderboard\controller\PlayerController.class
+com\example\leaderboard\controller\LeaderboardController.class
+com\example\leaderboard\model\Score.class
+com\example\leaderboard\config\CosmosConfig.class
+com\example\leaderboard\LeaderboardApplication.class
+com\example\leaderboard\model\LeaderboardEntry.class
+com\example\leaderboard\service\LeaderboardService.class
+com\example\leaderboard\controller\HealthController.class
+com\example\leaderboard\controller\ScoreController.class
+com\example\leaderboard\model\Player.class
+com\example\leaderboard\model\PlayerRankResponse.class

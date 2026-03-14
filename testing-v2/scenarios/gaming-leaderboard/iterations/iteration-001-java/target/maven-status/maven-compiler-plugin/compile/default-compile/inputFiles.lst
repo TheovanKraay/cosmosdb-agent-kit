@@ -1,0 +1,11 @@
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\controller\HealthController.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\model\PlayerRankResponse.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\controller\PlayerController.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\LeaderboardApplication.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\service\LeaderboardService.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\model\Player.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\config\CosmosConfig.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\model\LeaderboardEntry.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\controller\LeaderboardController.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\model\Score.java
+D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-java\src\main\java\com\example\leaderboard\controller\ScoreController.java
