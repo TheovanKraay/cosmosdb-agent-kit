@@ -1,0 +1,17 @@
+language: java
+database: ecommerce-order-api
+port: 8080
+health: /health
+
+# Build: compile with Maven (skip tests for speed)
+build: mvn package -DskipTests
+
+# Run: start the Spring Boot fat jar
+# -Dio.netty.handler.ssl.noOpenSsl=true forces Netty to use JDK's JSSE
+# instead of native OpenSSL. This is required so the emulator's SSL certificate
+# (imported into the JDK truststore by CI) is respected.
+# See AGENTS.md rule 4.6 and repository memory about netty-tcnative-boringssl-static.
+run: java -Dio.netty.handler.ssl.noOpenSsl=true -jar target/app.jar
+
+# Skills were loaded (AGENTS.md was read before generating this code)
+skills_loaded: true
