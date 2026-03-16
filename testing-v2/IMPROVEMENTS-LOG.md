@@ -18,6 +18,29 @@ Each improvement entry should include:
 
 ## Improvements
 
+#### 2026-03-16: Control Run — E-Commerce Order API (Java, No Skills)
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-001-java
+- **Result**: ✅ 76/76 tests passed (100%) — CONTROL RUN (no skills loaded)
+- **Score**: 6/10 overall (10/10 API conformance, but significant best-practice gaps)
+- **Purpose**: Establish baseline for Java + Cosmos DB code quality without skills loaded
+
+**Key Findings (gaps that skills would have prevented)**:
+
+1. **Cross-partition query for order lookup** — `getOrder(orderId)` uses `SELECT * FROM c WHERE c.orderId = @orderId` across all partitions instead of a point read; `query-avoid-cross-partition.md` would prevent the fan-out, `query-avoid-scans.md` would promote using `readItem` for single-item lookups
+2. **Default indexing policy** — indexes all fields including `items` array and `shippingAddress`, wasting 20-80% write RU (`index-exclude-unused.md`)
+3. **Gateway connection mode** — adds 2-10ms extra latency vs Direct mode (`sdk-connection-mode.md`)
+4. **No `contentResponseOnWriteEnabled`** — Java SDK returns null from write operations by default (`sdk-java-content-response.md`)
+5. **No ETag concurrency** — read-modify-write on status updates has no optimistic locking (`sdk-etag-concurrency.md`)
+6. **SELECT * everywhere** — returns full documents when only summary fields needed (`query-use-projections.md`)
+7. **In-memory aggregation** — customer summary fetches all orders to Java heap instead of server-side aggregation
+8. **Emulator SSL failure** — `netty-tcnative` caused SSL cert validation failure, required 2 CI fix attempts (`sdk-emulator-ssl.md`)
+
+**No rules created or updated** — this is a control run baseline.
+**Estimated with-skills score**: 9/10 (up from 6/10).
+**Next**: Run iteration-002-java WITH skills to measure actual improvement.
+
 #### 2026-03-12: New Rules — Parameterized TOP and Composite Index Directions
 
 - **Scenario**: gaming-leaderboard
