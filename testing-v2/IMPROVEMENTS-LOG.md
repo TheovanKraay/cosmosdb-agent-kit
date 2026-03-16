@@ -1118,3 +1118,44 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-16: iteration-001-java - Ecommerce Order Api (Java) [CONTROL - no skills]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-001-java
+- **Skills loaded**: No (control run)
+- **Result**: FAILED -- 39/91 tests passed (42.9%)
+- **Score**: 2/10
+
+**Results by Category**:
+- api_contract: 15 passed, 26 failed, 0 skipped
+- cosmos_infrastructure: 10 passed, 4 failed, 1 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 9 passed, 21 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_existing_order** -- AssertionError: GET /api/orders/1603fe76-09e0-44cb-82d8-e71ceef2e0fc should return 200, got 500
+asse
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_has_required_fields** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_returns_correct_data** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_returns_200** -- AssertionError: GET /api/customers/customer-001/orders should return 200, got 500
+assert 500 == 200
+
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_returns_array** -- AssertionError: Customer orders should return an array, got dict
+assert False
+ +  where False = isin
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_only_contains_own_orders** -- TypeError: string indices must be integers, not 'str'
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_entries_have_required_fields** -- KeyError: 0
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByStatus::test_query_by_status_returns_200** -- AssertionError: GET /api/orders?status=pending should return 200, got 500
+assert 500 == 200
+ +  wher
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByStatus::test_query_by_status_returns_array** -- AssertionError: Status query should return an array, got dict
+assert False
+ +  where False = isinsta
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByStatus::test_all_seeded_orders_are_pending** -- AssertionError: Expected at least 5 pending orders (seeded data), got 1
+assert 1 >= 5
+ +  where 1 = 
+
+**Test Results**: 39 passed, 52 failed out of 91
