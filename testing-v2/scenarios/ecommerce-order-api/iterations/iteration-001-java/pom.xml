@@ -36,12 +36,20 @@
             <artifactId>azure-cosmos</artifactId>
             <version>${azure.cosmos.version}</version>
             <exclusions>
-                <!-- Exclude native OpenSSL to force JSSE (JDK SSL), which respects the JDK truststore.
-                     Required for emulator: CI imports the emulator cert into JDK truststore.
+                <!-- Exclude native OpenSSL library to force JSSE (JDK SSL), which respects
+                     the JDK truststore. CI imports the emulator cert into JDK truststore.
                      See AGENTS.md rule 4.6 -->
                 <exclusion>
                     <groupId>io.netty</groupId>
                     <artifactId>netty-tcnative-boringssl-static</artifactId>
+                </exclusion>
+                <!-- Exclude the tcnative class stubs too: with these present, Netty may
+                     still attempt to initialize native SSL even when the native library is
+                     absent, causing SSL handshake failures with the emulator's self-signed
+                     certificate. Removing both artifacts forces pure JSSE mode. -->
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-tcnative-classes</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
