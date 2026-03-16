@@ -3,5 +3,5 @@ database: ecommerce-order-api
 port: 8080
 health: /health
 build: mvn package -DskipTests
-run: java -jar target/app.jar
+run: java -Dio.netty.handler.ssl.noOpenSsl=true -jar target/app.jar
 skills_loaded: false

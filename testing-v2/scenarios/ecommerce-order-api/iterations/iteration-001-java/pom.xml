@@ -30,6 +30,16 @@
             <groupId>com.azure</groupId>
             <artifactId>azure-cosmos</artifactId>
             <version>4.55.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-tcnative-boringssl-static</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty-tcnative-classes</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
