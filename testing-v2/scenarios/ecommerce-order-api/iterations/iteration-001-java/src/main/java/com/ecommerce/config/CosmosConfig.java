@@ -18,7 +18,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.Arrays;
-import java.util.Collections;
 
 /**
  * Cosmos DB configuration using @Bean chain pattern (Rule 4.10).
@@ -100,15 +99,17 @@ public class CosmosConfig {
         IndexingPolicy indexingPolicy = new IndexingPolicy();
         indexingPolicy.setIndexingMode(IndexingMode.CONSISTENT);
 
-        // Index paths needed for queries
+        // Index paths needed for queries (Rule 5.3: index only required fields)
         indexingPolicy.setIncludedPaths(Arrays.asList(
                 new IncludedPath("/customerId/?"),
                 new IncludedPath("/status/?"),
                 new IncludedPath("/createdAt/?")
         ));
 
-        // Exclude large fields from indexing to save RU cost
-        indexingPolicy.setExcludedPaths(Collections.singletonList(
+        // Cosmos DB requires "/*" in either includedPaths or excludedPaths.
+        // Excluding "/*" means "exclude everything not explicitly included above" (Rule 5.3).
+        indexingPolicy.setExcludedPaths(Arrays.asList(
+                new ExcludedPath("/*"),
                 new ExcludedPath("/items/*")
         ));
 
