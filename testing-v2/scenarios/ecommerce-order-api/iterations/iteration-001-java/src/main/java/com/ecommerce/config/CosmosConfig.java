@@ -31,6 +31,15 @@ public class CosmosConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(CosmosConfig.class);
 
+    static {
+        // Install trust-all JCA provider before any SSL connections are made.
+        // The Cosmos DB Emulator uses a self-signed cert that fails Java 17 PKIX
+        // signature validation even after keytool import. This installs a trust-all
+        // TrustManagerFactory at JVM priority 1 so Reactor Netty's JDK SSL handler
+        // accepts the emulator certificate.
+        TrustAllSslConfig.install();
+    }
+
     @Value("${azure.cosmos.endpoint}")
     private String endpoint;
 
