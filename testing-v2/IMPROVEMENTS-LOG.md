@@ -1164,7 +1164,7 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
 
-#### 2026-03-16: iteration-001-java - Ecommerce Order Api (Java) [CONTROL - no skills]
+#### 2026-03-17: iteration-001-java - Ecommerce Order Api (Java) [CONTROL - no skills]
 
 - **Scenario**: ecommerce-order-api
 - **Iteration**: iteration-001-java
@@ -1179,7 +1179,7 @@ After completing the iteration successfully, user provided GitHub samples showin
 - robustness: 9 passed, 21 failed, 0 skipped
 
 **Issues Encountered**:
-1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_existing_order** -- AssertionError: GET /api/orders/1603fe76-09e0-44cb-82d8-e71ceef2e0fc should return 200, got 500
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_existing_order** -- AssertionError: GET /api/orders/bf44e08c-d9b8-41b4-a1ec-ce054857f162 should return 200, got 500
 asse
 1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_has_required_fields** -- assert 500 == 200
  +  where 500 = <Response [500]>.status_code
