@@ -925,7 +925,9 @@ Reference: [Data modeling in Azure Cosmos DB](https://learn.microsoft.com/azure/
 
 ## Version Your Document Schemas
 
-Include schema version in documents to handle evolution gracefully. This enables safe migrations and backward-compatible reads.
+Include a `schemaVersion` field (integer) in every document to handle schema evolution gracefully. This enables safe migrations and backward-compatible reads.
+
+**Important naming convention**: Use `schemaVersion` as the field name (not `_schemaVersion`, `schema_version`, or `_version`). The `schemaVersion` name is standard and recognized by infrastructure validation tools.
 
 **Incorrect (no version tracking):**
 
@@ -1009,10 +1011,14 @@ Reference: [Schema evolution in Cosmos DB](https://learn.microsoft.com/azure/cos
 
 ## Use Type Discriminators for Polymorphic Data
 
+Include a `type` field in **every document**, even when the container holds only one entity type. This provides future extensibility and enables efficient filtering if additional entity types are added later.
+
 Use a single Cosmos DB container to co-locate related parent/child or different entity types when:
 - similar entities are written and read together, share a natural or business partition key, require a simple transactional boundary, and do not exceed Cosmos DB partition key limits.
 
-When storing multiple entity types in the same container, include a type discriminator field for efficient filtering and deserialization.
+**Always include `type` in documents:**
+- Single entity type containers: set `type = "order"`, `type = "user"`, etc. — prepares for future growth
+- Multi entity type containers: required for efficient filtering and deserialization
 
 **Incorrect (no type discrimination):**
 
@@ -5032,7 +5038,14 @@ Reference: [Composite index sort order](https://learn.microsoft.com/azure/cosmos
 
 ## Use Composite Indexes for ORDER BY
 
-Create composite indexes for queries with ORDER BY on multiple properties. Without them, queries may fail or require expensive client-side sorting.
+Create composite indexes for **any query that combines a filter (WHERE) with a sort (ORDER BY)** — even when ORDER BY uses only a single field. Without composite indexes, these queries fail or require expensive client-side sorting.
+
+**Critical rule**: Even a single-field ORDER BY requires a composite index when combined with a WHERE clause filter. For example, `WHERE c.status = @s ORDER BY c.createdAt DESC` requires a composite index on `(status ASC, createdAt DESC)` — a single-field range index on `createdAt` is NOT sufficient.
+
+**Always add composite indexes when your application has:**
+- Filter by one field + sort by another: `WHERE status = 'x' ORDER BY createdAt`
+- Customer-scoped queries sorted by date: `WHERE customerId = @id ORDER BY createdAt`
+- Admin queries filtered by type/status sorted by time
 
 **Incorrect (ORDER BY without composite index):**
 

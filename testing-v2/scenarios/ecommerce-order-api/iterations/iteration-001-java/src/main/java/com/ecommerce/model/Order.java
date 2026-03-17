@@ -82,6 +82,14 @@ public class Order {
     private String shippingAddress;
 
     /**
+     * Type discriminator for document classification (Rule 1.9).
+     * Enables efficient filtering and future extensibility.
+     */
+    @JsonProperty("type")
+    @Builder.Default
+    private String type = "order";
+
+    /**
      * ETag for optimistic concurrency on status updates (Rule 4.7).
      * Populated from Cosmos DB response headers.
      */
@@ -90,7 +98,9 @@ public class Order {
 
     /**
      * Document schema version for future migrations (Rule 1.10).
+     * Field name "schemaVersion" (not "_schemaVersion") matches test expectations.
      */
-    @JsonProperty("_schemaVersion")
-    private int schemaVersion;
+    @JsonProperty("schemaVersion")
+    @Builder.Default
+    private int schemaVersion = 1;
 }

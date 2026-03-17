@@ -5,6 +5,8 @@ import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
+import com.azure.cosmos.models.CompositePath;
+import com.azure.cosmos.models.CompositePathSortOrder;
 import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.ExcludedPath;
 import com.azure.cosmos.models.IncludedPath;
@@ -17,7 +19,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Cosmos DB configuration using @Bean chain pattern (Rule 4.10).
@@ -112,6 +116,26 @@ public class CosmosConfig {
                 new ExcludedPath("/*"),
                 new ExcludedPath("/items/*")
         ));
+
+        // Composite indexes for ORDER BY queries (Rule 5.2)
+        // These allow Cosmos DB to use an index for filter + sort without a client-side sort.
+        List<List<CompositePath>> compositeIndexes = new ArrayList<>();
+
+        // Pattern 1: admin query "orders by status sorted by date"
+        // WHERE c.status = @status ORDER BY c.createdAt DESC
+        compositeIndexes.add(Arrays.asList(
+                new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING),
+                new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING)
+        ));
+
+        // Pattern 2: customer query "order history sorted by date"
+        // WHERE c.customerId = @customerId ORDER BY c.createdAt DESC
+        compositeIndexes.add(Arrays.asList(
+                new CompositePath().setPath("/customerId").setOrder(CompositePathSortOrder.ASCENDING),
+                new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING)
+        ));
+
+        indexingPolicy.setCompositeIndexes(compositeIndexes);
 
         props.setIndexingPolicy(indexingPolicy);
 

@@ -7,10 +7,14 @@ tags: model, polymorphism, type-discriminator, design
 
 ## Use Type Discriminators for Polymorphic Data
 
+Include a `type` field in **every document**, even when the container holds only one entity type. This provides future extensibility and enables efficient filtering if additional entity types are added later.
+
 Use a single Cosmos DB container to co-locate related parent/child or different entity types when:
 - similar entities are written and read together, share a natural or business partition key, require a simple transactional boundary, and do not exceed Cosmos DB partition key limits.
 
-When storing multiple entity types in the same container, include a type discriminator field for efficient filtering and deserialization.
+**Always include `type` in documents:**
+- Single entity type containers: set `type = "order"`, `type = "user"`, etc. — prepares for future growth
+- Multi entity type containers: required for efficient filtering and deserialization
 
 **Incorrect (no type discrimination):**
 

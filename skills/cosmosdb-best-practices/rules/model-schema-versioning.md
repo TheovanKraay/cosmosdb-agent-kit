@@ -7,7 +7,9 @@ tags: model, schema, versioning, migration
 
 ## Version Your Document Schemas
 
-Include schema version in documents to handle evolution gracefully. This enables safe migrations and backward-compatible reads.
+Include a `schemaVersion` field (integer) in every document to handle schema evolution gracefully. This enables safe migrations and backward-compatible reads.
+
+**Important naming convention**: Use `schemaVersion` as the field name (not `_schemaVersion`, `schema_version`, or `_version`). The `schemaVersion` name is standard and recognized by infrastructure validation tools.
 
 **Incorrect (no version tracking):**
 

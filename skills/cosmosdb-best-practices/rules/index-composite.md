@@ -7,7 +7,14 @@ tags: index, composite, orderby, sorting
 
 ## Use Composite Indexes for ORDER BY
 
-Create composite indexes for queries with ORDER BY on multiple properties. Without them, queries may fail or require expensive client-side sorting.
+Create composite indexes for **any query that combines a filter (WHERE) with a sort (ORDER BY)** — even when ORDER BY uses only a single field. Without composite indexes, these queries fail or require expensive client-side sorting.
+
+**Critical rule**: Even a single-field ORDER BY requires a composite index when combined with a WHERE clause filter. For example, `WHERE c.status = @s ORDER BY c.createdAt DESC` requires a composite index on `(status ASC, createdAt DESC)` — a single-field range index on `createdAt` is NOT sufficient.
+
+**Always add composite indexes when your application has:**
+- Filter by one field + sort by another: `WHERE status = 'x' ORDER BY createdAt`
+- Customer-scoped queries sorted by date: `WHERE customerId = @id ORDER BY createdAt`
+- Admin queries filtered by type/status sorted by time
 
 **Incorrect (ORDER BY without composite index):**
 
