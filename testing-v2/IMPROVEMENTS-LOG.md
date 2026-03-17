@@ -1118,3 +1118,25 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-17: iteration-001-java - Ecommerce Order Api (Java) [skills loaded]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-001-java
+- **Skills loaded**: Yes
+- **Result**: PARTIAL -- 86/91 tests passed (94.5%)
+- **Score**: 7/10
+
+**Results by Category**:
+- api_contract: 41 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 10 passed, 4 failed, 1 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 30 passed, 0 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestIndexingPolicies::test_has_composite_indexes_for_order_queries** -- AssertionError: No container has composite indexes defined. E-commerce queries like 'orders by statu
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestEnumSerialization::test_status_query_returns_correct_results** -- AssertionError: Status update failed: 409 {"timestamp":"2026-03-17T15:58:18.016+00:00","status":409,
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_type_discriminator** -- Failed: No documents have a type discriminator field. When a container holds multiple entity types (
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_schema_version** -- Failed: No documents have a schema version field. Include a 'schemaVersion' field in documents so fu
+
+**Test Results**: 86 passed, 5 failed out of 91
