@@ -18,6 +18,51 @@ Each improvement entry should include:
 
 ## Improvements
 
+#### 2026-03-17: Control Run — Ecommerce Order API (Java, no skills)
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-001-java (PR #42, control run — NO skills loaded)
+- **Pass Rate**: 42.9% (39/91 tests passed)
+- **Run Type**: ⚠️ CONTROL RUN — agent generated code without reading AGENTS.md. No rules were created or modified.
+
+**Purpose**: Establish a baseline score for the ecommerce-order-api scenario in Java before skills are applied. Future iterations with skills loaded can be compared against this 42.9% baseline to measure skill kit effectiveness.
+
+**Primary Failure Found** 🐛:
+
+- **Jackson ObjectMapper fails on Cosmos DB system fields** (caused ~40/51 test failures)
+  - The agent created `new ObjectMapper()` without `FAIL_ON_UNKNOWN_PROPERTIES = false`
+  - Cosmos DB query results include system properties: `_rid`, `_self`, `_etag`, `_ts`, `_attachments`
+  - Jackson's default behavior throws `UnrecognizedPropertyException` for these fields
+  - This caused `RuntimeException("Failed to deserialize order")` on every read → HTTP 500
+  - **Not covered by existing rules**: Rule 1.5 (`model-json-serialization.md`) covers Jackson
+    serialization but does not specifically address Cosmos system fields or the need to use
+    SDK-native deserialization (`container.queryItems(..., Order.class)`) vs raw `ObjectMapper.treeToValue()`
+  - **Recommended action**: Add new rule `model-cosmos-deserialization-java.md` or strengthen
+    Rule 1.5 with guidance on SDK-native deserialization and `FAIL_ON_UNKNOWN_PROPERTIES=false`
+
+**Secondary Gaps Found (would be addressed by existing rules)**:
+
+- No composite index for `(status, createdAt)` queries — covered by Rules 5.1, 5.2
+- No `type` discriminator field — covered by Rule 1.11
+- No `schemaVersion` field — covered by Rule 1.10
+- `SELECT *` throughout instead of field projections — covered by Rule 3.7
+- No ETag optimistic concurrency on status update — covered by Rule 4.7
+- `contentResponseOnWriteEnabled` not set (Java SDK) — covered by Rule 4.9
+- `findById` is a cross-partition scan — covered by Rule 3.1
+
+**Startup Issue** (SSL fix required, separate from skill gaps):
+- Java 17 strict PKIX validation rejected the Cosmos Emulator cert even after `keytool` import
+- Fixed by installing a trust-all JCA Security Provider (`Security.insertProviderAt()`)
+- `CosmosClientBuilder` in azure-cosmos 4.61.0 has no `httpClient()` method
+- This is a CI infrastructure concern, not a skills gap
+
+**Estimated score with skills loaded**: 7/10 (vs 4/10 as-is). Primary serialization bug is NOT
+covered by existing rules; new rule needed to close the gap fully.
+
+**Files Modified**: None (control run — no rule changes)
+
+---
+
 #### 2026-03-12: New Rules — Parameterized TOP and Composite Index Directions
 
 - **Scenario**: gaming-leaderboard
