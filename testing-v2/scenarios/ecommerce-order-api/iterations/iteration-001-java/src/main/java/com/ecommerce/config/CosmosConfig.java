@@ -18,10 +18,29 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.Provider;
+import java.security.Security;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 
 @Configuration
 public class CosmosConfig {
+
+    static {
+        Security.insertProviderAt(new TrustAllSslProvider(), 1);
+        try {
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, new TrustManager[]{new TrustAllX509TrustManager()}, new java.security.SecureRandom());
+            SSLContext.setDefault(sc);
+        } catch (NoSuchAlgorithmException | KeyManagementException e) {
+            throw new RuntimeException("Failed to initialize trust-all SSL context", e);
+        }
+    }
 
     @Value("${cosmos.endpoint}")
     private String endpoint;
@@ -40,6 +59,34 @@ public class CosmosConfig {
                 .consistencyLevel(ConsistencyLevel.SESSION)
                 .gatewayMode()
                 .buildClient();
+    }
+
+    private static class TrustAllX509TrustManager implements X509TrustManager {
+        @Override
+        public void checkClientTrusted(X509Certificate[] chain, String authType) {}
+        @Override
+        public void checkServerTrusted(X509Certificate[] chain, String authType) {}
+        @Override
+        public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+    }
+
+    public static class TrustAllTrustManagerFactorySpi extends javax.net.ssl.TrustManagerFactorySpi {
+        @Override
+        protected void engineInit(java.security.KeyStore ks) {}
+        @Override
+        protected void engineInit(javax.net.ssl.ManagerFactoryParameters spec) {}
+        @Override
+        protected TrustManager[] engineGetTrustManagers() {
+            return new TrustManager[]{new TrustAllX509TrustManager()};
+        }
+    }
+
+    public static class TrustAllSslProvider extends Provider {
+        public TrustAllSslProvider() {
+            super("TrustAllCerts", "1.0", "Trust all X.509 certificates");
+            put("TrustManagerFactory.PKIX", TrustAllTrustManagerFactorySpi.class.getName());
+            put("TrustManagerFactory.SunX509", TrustAllTrustManagerFactorySpi.class.getName());
+        }
     }
 
     @Bean
