@@ -1118,3 +1118,32 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-18: iteration-001-python - Iot Device Telemetry (Python) [CONTROL - no skills]
+
+- **Scenario**: iot-device-telemetry
+- **Iteration**: iteration-001-python
+- **Skills loaded**: No (control run)
+- **Result**: PARTIAL -- 84/92 tests passed (91.3%)
+- **Score**: 9/10
+
+**Results by Category**:
+- api_contract: 44 passed, 2 failed, 0 skipped
+- cosmos_infrastructure: 12 passed, 0 failed, 1 skipped
+- data_integrity: 6 passed, 0 failed, 0 skipped
+- robustness: 22 passed, 5 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestDeleteDevice::test_deleted_device_returns_404_on_get** -- requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(10054, 'An existin
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestDeleteDevice::test_deleted_device_removed_from_location_query** -- requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed c
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestComputedFieldAccuracy::test_stats_temperature_min_correct** -- AssertionError: device-001 min temperature should be ~21.8 (readings: 22.5, 23.1, 21.8), got 20
+asse
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestComputedFieldAccuracy::test_stats_humidity_values_correct** -- AssertionError: humidity max should be ~46.5, got 50
+assert 3.5 < 0.1
+ +  where 3.5 = abs((50 - 46.5
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestEdgeCases::test_latest_reading_is_most_recent** -- AssertionError: Latest reading for device-001 should have temperature ~21.8 (the most recent seeded 
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestEdgeCases::test_batch_ingest_count_matches_input** -- assert 422 == 201
+ +  where 422 = <Response [422]>.status_code
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestUpdateDeleteConsistency::test_deleted_device_telemetry_returns_404** -- requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed c
+
+**Test Results**: 84 passed, 8 failed out of 92
