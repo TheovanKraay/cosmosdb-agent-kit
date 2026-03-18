@@ -28,14 +28,18 @@ public class CosmosConfig {
 
     // Install a trust-all TrustManagerFactory provider so that Netty's JDK SSL
     // engine accepts the Cosmos DB Emulator's self-signed certificate.
+    // Only active when COSMOS_ENDPOINT points to localhost (emulator).
     static {
-        Security.insertProviderAt(new Provider("TrustAll", "1.0",
-                "Trust-all TrustManagerFactory for Cosmos DB Emulator") {
-            {
-                put("TrustManagerFactory.PKIX", TrustAllTmfSpi.class.getName());
-                put("TrustManagerFactory.SunX509", TrustAllTmfSpi.class.getName());
-            }
-        }, 1);
+        String cosmosEndpoint = System.getenv("COSMOS_ENDPOINT");
+        if (cosmosEndpoint == null || cosmosEndpoint.contains("localhost") || cosmosEndpoint.contains("127.0.0.1")) {
+            Security.insertProviderAt(new Provider("TrustAll", "1.0",
+                    "Trust-all TrustManagerFactory for Cosmos DB Emulator") {
+                {
+                    put("TrustManagerFactory.PKIX", TrustAllTmfSpi.class.getName());
+                    put("TrustManagerFactory.SunX509", TrustAllTmfSpi.class.getName());
+                }
+            }, 1);
+        }
     }
 
     @Value("${cosmos.endpoint}")
