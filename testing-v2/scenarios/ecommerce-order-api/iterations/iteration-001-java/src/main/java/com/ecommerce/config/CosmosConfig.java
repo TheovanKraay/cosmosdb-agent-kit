@@ -17,13 +17,26 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.security.Provider;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 @Configuration
 public class CosmosConfig {
+
+    // Install a trust-all TrustManagerFactory provider so that Netty's JDK SSL
+    // engine accepts the Cosmos DB Emulator's self-signed certificate.
+    static {
+        Security.insertProviderAt(new Provider("TrustAll", "1.0",
+                "Trust-all TrustManagerFactory for Cosmos DB Emulator") {
+            {
+                put("TrustManagerFactory.PKIX", TrustAllTmfSpi.class.getName());
+                put("TrustManagerFactory.SunX509", TrustAllTmfSpi.class.getName());
+            }
+        }, 1);
+    }
 
     @Value("${cosmos.endpoint}")
     private String endpoint;
