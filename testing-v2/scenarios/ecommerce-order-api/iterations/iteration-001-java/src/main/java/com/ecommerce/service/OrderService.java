@@ -62,7 +62,7 @@ public class OrderService {
 
     public Order getOrder(String orderId) {
         SqlQuerySpec query = new SqlQuerySpec(
-                "SELECT * FROM c WHERE c.id = @orderId",
+                "SELECT c.id, c.orderId, c.customerId, c.status, c.items, c.total, c.createdAt, c.shippingAddress, c.type, c.schemaVersion FROM c WHERE c.id = @orderId",
                 Arrays.asList(new SqlParameter("@orderId", orderId)));
 
         CosmosQueryRequestOptions options = new CosmosQueryRequestOptions();
@@ -108,8 +108,8 @@ public class OrderService {
 
         if (!results.isEmpty()) {
             SummaryResult result = results.get(0);
-            totalOrders = result.totalOrders;
-            totalSpent = result.totalSpent;
+            totalOrders = result.getTotalOrders();
+            totalSpent = result.getTotalSpent();
         }
 
         double averageOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0.0;
@@ -223,7 +223,23 @@ public class OrderService {
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     private static class SummaryResult {
-        public int totalOrders;
-        public double totalSpent;
+        private int totalOrders;
+        private double totalSpent;
+
+        public int getTotalOrders() {
+            return totalOrders;
+        }
+
+        public void setTotalOrders(int totalOrders) {
+            this.totalOrders = totalOrders;
+        }
+
+        public double getTotalSpent() {
+            return totalSpent;
+        }
+
+        public void setTotalSpent(double totalSpent) {
+            this.totalSpent = totalSpent;
+        }
     }
 }
