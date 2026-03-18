@@ -1118,3 +1118,36 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-18: iteration-001-java - Ecommerce Order Api (Java) [skills loaded]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-001-java
+- **Skills loaded**: Yes
+- **Result**: PARTIAL -- 81/91 tests passed (89.0%)
+- **Score**: 7/10
+
+**Results by Category**:
+- api_contract: 35 passed, 6 failed, 0 skipped
+- cosmos_infrastructure: 13 passed, 1 failed, 1 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 28 passed, 2 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_summary_returns_200** -- AssertionError: GET /api/customers/customer-001/orders/summary should return 200, got 500. Response:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_summary_has_required_fields** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_001_summary_correct** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_003_summary_correct** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_summary_average_is_correct** -- KeyError: 'totalSpent'
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_nonexistent_customer_summary_empty** -- AssertionError: Summary for nonexistent customer should return 200 (with zeros) or 404, got 500
+asse
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestEnumSerialization::test_status_query_returns_correct_results** -- AssertionError: Status update failed: 409 {"error":"Invalid status transition from shipped to shippe
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestCustomerSummaryConsistency::test_summary_updates_after_new_order** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestCustomerSummaryConsistency::test_summary_reflects_deleted_order** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+
+**Test Results**: 81 passed, 10 failed out of 91
