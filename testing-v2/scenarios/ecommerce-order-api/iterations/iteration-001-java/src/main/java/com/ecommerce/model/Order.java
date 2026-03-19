@@ -1,0 +1,85 @@
+package com.ecommerce.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Order {
+
+    private String id;
+    private String customerId;
+    private String status;
+    private List<OrderItem> items;
+    private double total;
+    private String createdAt;
+    private String updatedAt;
+    private String shippingAddress;
+    private String type;
+    private String schemaVersion;
+
+    public Order() {
+        this.id = UUID.randomUUID().toString();
+        this.status = "pending";
+        this.createdAt = Instant.now().toString();
+        this.updatedAt = this.createdAt;
+        this.type = "order";
+        this.schemaVersion = "1.0";
+    }
+
+    @JsonProperty("id")
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+
+    @JsonProperty("orderId")
+    public String getOrderId() { return id; }
+
+    @JsonProperty("customerId")
+    public String getCustomerId() { return customerId; }
+    public void setCustomerId(String customerId) { this.customerId = customerId; }
+
+    @JsonProperty("status")
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+
+    @JsonProperty("items")
+    public List<OrderItem> getItems() { return items; }
+    public void setItems(List<OrderItem> items) { this.items = items; }
+
+    @JsonProperty("total")
+    public double getTotal() { return total; }
+    public void setTotal(double total) { this.total = total; }
+
+    @JsonProperty("createdAt")
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
+
+    @JsonProperty("updatedAt")
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+
+    @JsonProperty("shippingAddress")
+    public String getShippingAddress() { return shippingAddress; }
+    public void setShippingAddress(String shippingAddress) { this.shippingAddress = shippingAddress; }
+
+    @JsonProperty("type")
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
+
+    @JsonProperty("schemaVersion")
+    public String getSchemaVersion() { return schemaVersion; }
+    public void setSchemaVersion(String schemaVersion) { this.schemaVersion = schemaVersion; }
+
+    public void calculateTotal() {
+        if (items != null) {
+            this.total = items.stream()
+                    .mapToDouble(item -> item.getQuantity() * item.getUnitPrice())
+                    .sum();
+            // Round to 2 decimal places
+            this.total = Math.round(this.total * 100.0) / 100.0;
+        }
+    }
+}
