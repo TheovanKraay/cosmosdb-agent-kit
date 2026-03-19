@@ -1118,3 +1118,19 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-19: iteration-001-java - Ecommerce Order Api (Java) [CONTROL - no skills]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-001-java
+- **Skills loaded**: No (control run)
+- **Result**: SUCCESSFUL -- 91/91 tests passed (100%)
+- **Score**: 10/10
+
+**Results by Category**:
+- api_contract: 41 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 15 passed, 0 failed, 0 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 30 passed, 0 failed, 0 skipped
+
+**Test Results**: 91 passed, 0 failed out of 91
