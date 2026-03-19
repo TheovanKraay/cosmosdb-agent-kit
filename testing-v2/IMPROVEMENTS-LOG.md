@@ -1118,3 +1118,22 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-19: iteration-002-java - Ecommerce Order Api (Java) [CONTROL - no skills]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-002-java
+- **Skills loaded**: No (control run)
+- **Result**: PARTIAL -- 89/91 tests passed (97.8%)
+- **Score**: 8/10
+
+**Results by Category**:
+- api_contract: 41 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 13 passed, 1 failed, 1 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 30 passed, 0 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestIndexingPolicies::test_has_composite_indexes_for_order_queries** -- AssertionError: No container has composite indexes defined. E-commerce queries like 'orders by statu
+
+**Test Results**: 89 passed, 2 failed out of 91
