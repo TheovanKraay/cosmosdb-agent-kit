@@ -1118,3 +1118,31 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-19: iteration-002-java - Ecommerce Order Api (Java) [CONTROL - no skills]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-002-java
+- **Skills loaded**: No (control run)
+- **Result**: FAILED -- 17/91 tests passed (18.7%)
+- **Score**: 1/10
+
+**Results by Category**:
+- api_contract: 5 passed, 36 failed, 0 skipped
+- cosmos_infrastructure: 4 passed, 11 failed, 0 skipped
+- data_integrity: 4 passed, 1 failed, 0 skipped
+- robustness: 4 passed, 26 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_response_has_required_fields** -- requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_new_order_status_is_pending** -- requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_calculates_total** -- requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_has_timestamp** -- requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_returns_items** -- requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_existing_order** -- failed on setup with "requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_has_required_fields** -- failed on setup with "requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_returns_correct_data** -- failed on setup with "requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_returns_200** -- failed on setup with "requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_returns_array** -- failed on setup with "requests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)
+
+**Test Results**: 17 passed, 74 failed out of 91
