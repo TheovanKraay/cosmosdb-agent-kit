@@ -1118,3 +1118,29 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-19: iteration-003-java - Ecommerce Order Api (Java) [CONTROL - no skills]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-003-java
+- **Skills loaded**: No (control run)
+- **Result**: PARTIAL -- 84/91 tests passed (92.3%)
+- **Score**: 8/10
+
+**Results by Category**:
+- api_contract: 41 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 13 passed, 1 failed, 1 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 25 passed, 5 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestIndexingPolicies::test_has_composite_indexes_for_order_queries** -- AssertionError: No container has composite indexes defined. E-commerce queries like 'orders by statu
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_create_order_missing_customer_id_returns_4xx** -- AssertionError: Missing customerId should return 4xx, got 500. The app must validate required fields
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_create_order_missing_items_returns_4xx** -- AssertionError: Missing items should return 4xx, got 500. The app must validate required fields.
+ass
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_create_order_empty_items_returns_4xx** -- AssertionError: Empty items array should return 4xx, got 201. An order must have at least one item.
+
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_create_order_empty_body_returns_4xx** -- AssertionError: Empty body should return 4xx, got 500. Server must not crash (500) on missing fields
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_update_status_empty_body_returns_4xx** -- AssertionError: Empty status update body caused a server error (500). Server must handle missing fie
+
+**Test Results**: 84 passed, 7 failed out of 91
