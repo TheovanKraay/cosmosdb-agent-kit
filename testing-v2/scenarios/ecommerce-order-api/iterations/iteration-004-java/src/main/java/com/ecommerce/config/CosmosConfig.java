@@ -8,10 +8,14 @@ import com.azure.cosmos.CosmosDatabase;
 import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.PartitionKeyDefinition;
 import com.azure.cosmos.models.ThroughputProperties;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
 import java.util.Collections;
 
 @Configuration
@@ -25,6 +29,25 @@ public class CosmosConfig {
 
     @Value("${cosmos.database}")
     private String databaseName;
+
+    @PostConstruct
+    public void init() {
+        trustAllCertificates();
+    }
+
+    private void trustAllCertificates() {
+        try {
+            TrustAllProvider.install();
+            TrustManager[] trustAllCerts = new TrustManager[]{ TrustAllProvider.getTrustManager() };
+            SSLContext sc = SSLContext.getInstance("TLS");
+            sc.init(null, trustAllCerts, new java.security.SecureRandom());
+            SSLContext.setDefault(sc);
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+            HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to set up SSL trust", e);
+        }
+    }
 
     @Bean
     public CosmosClient cosmosClient() {
