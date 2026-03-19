@@ -5,10 +5,7 @@ import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
-import com.azure.cosmos.DirectConnectionConfig;
-import com.azure.cosmos.GatewayConnectionConfig;
 import com.azure.cosmos.models.CosmosContainerProperties;
-import com.azure.cosmos.models.CosmosContainerResponse;
 import com.azure.cosmos.models.CosmosDatabaseResponse;
 import com.azure.cosmos.models.CompositePath;
 import com.azure.cosmos.models.CompositePathSortOrder;
@@ -16,20 +13,13 @@ import com.azure.cosmos.models.ExcludedPath;
 import com.azure.cosmos.models.IncludedPath;
 import com.azure.cosmos.models.IndexingMode;
 import com.azure.cosmos.models.IndexingPolicy;
-import com.azure.cosmos.models.PartitionKeyDefinition;
 import com.azure.cosmos.models.ThroughputProperties;
-import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 @Configuration
@@ -43,26 +33,6 @@ public class CosmosConfig {
 
     @Value("${cosmos.database}")
     private String databaseName;
-
-    @PostConstruct
-    public void disableSslVerification() {
-        try {
-            TrustManager[] trustAllCerts = new TrustManager[]{
-                new X509TrustManager() {
-                    public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-                    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-                }
-            };
-            SSLContext sc = SSLContext.getInstance("TLS");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            SSLContext.setDefault(sc);
-            javax.net.ssl.HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
-            javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to disable SSL verification", e);
-        }
-    }
 
     @Bean
     public CosmosClient cosmosClient() {
