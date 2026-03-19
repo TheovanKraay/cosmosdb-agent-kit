@@ -1118,3 +1118,36 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-19: iteration-003-java - Ecommerce Order Api (Java) [CONTROL - no skills]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-003-java
+- **Skills loaded**: No (control run)
+- **Result**: FAILED -- 16/91 tests passed (17.6%)
+- **Score**: 1/10
+
+**Results by Category**:
+- api_contract: 4 passed, 37 failed, 0 skipped
+- cosmos_infrastructure: 4 passed, 11 failed, 0 skipped
+- data_integrity: 4 passed, 1 failed, 0 skipped
+- robustness: 4 passed, 26 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_returns_201** -- AssertionError: POST /api/orders should return 201, got 400. Response: {"error":"Invalid request: Th
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_response_has_required_fields** -- assert 400 == 201
+ +  where 400 = <Response [400]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_new_order_status_is_pending** -- assert 400 == 201
+ +  where 400 = <Response [400]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_calculates_total** -- assert 400 == 201
+ +  where 400 = <Response [400]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_has_timestamp** -- assert 400 == 201
+ +  where 400 = <Response [400]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_returns_items** -- assert 400 == 201
+ +  where 400 = <Response [400]>.status_code
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_existing_order** -- failed on setup with "AssertionError: Failed to create order for customer-001: 400 {"error":"Invalid
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_has_required_fields** -- failed on setup with "AssertionError: Failed to create order for customer-001: 400 {"error":"Invalid
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_returns_correct_data** -- failed on setup with "AssertionError: Failed to create order for customer-001: 400 {"error":"Invalid
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_returns_200** -- failed on setup with "AssertionError: Failed to create order for customer-001: 400 {"error":"Invalid
+
+**Test Results**: 16 passed, 75 failed out of 91
