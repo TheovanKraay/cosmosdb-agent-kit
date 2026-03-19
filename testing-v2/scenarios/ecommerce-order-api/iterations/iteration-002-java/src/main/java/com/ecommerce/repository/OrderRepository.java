@@ -99,10 +99,6 @@ public class OrderRepository {
     }
 
     public void deleteOrder(String orderId, String customerId) {
-        // Need to get the document id first since Cosmos uses 'id' as the document key
-        Order order = getOrderById(orderId);
-        if (order != null) {
-            container.deleteItem(order.getId(), new PartitionKey(customerId), new CosmosItemRequestOptions());
-        }
+        container.deleteItem(orderId, new PartitionKey(customerId), new CosmosItemRequestOptions());
     }
 }
