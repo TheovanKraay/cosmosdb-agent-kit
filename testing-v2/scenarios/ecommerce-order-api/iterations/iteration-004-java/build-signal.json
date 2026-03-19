@@ -1,0 +1,7 @@
+{
+  "succeeded": true,
+  "stdout_tail": "",
+  "exit_code": 0,
+  "build_command": "mvn package -DskipTests -q",
+  "stderr_tail": ""
+}
