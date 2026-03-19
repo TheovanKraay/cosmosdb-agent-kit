@@ -107,8 +107,8 @@ public class OrderController {
             }
             return ResponseEntity.ok(order);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("error", "Order not found"));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to retrieve order: " + e.getMessage()));
         }
     }
 

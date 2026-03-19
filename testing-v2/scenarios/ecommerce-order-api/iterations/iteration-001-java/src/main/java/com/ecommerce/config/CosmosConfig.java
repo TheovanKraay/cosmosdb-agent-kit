@@ -44,6 +44,9 @@ public class CosmosConfig {
 
     private CosmosAsyncClient client;
 
+    // Emulator-only: disables SSL validation for the Cosmos DB emulator's self-signed cert.
+    // Not for production use. The emulator uses a self-signed certificate that the JVM
+    // does not trust by default.
     @PostConstruct
     public void init() throws Exception {
         TrustManager[] trustAllCerts = new TrustManager[]{
