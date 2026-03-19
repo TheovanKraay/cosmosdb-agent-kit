@@ -1,0 +1,69 @@
+{
+  "batch_issue": 70,
+  "scenario": "ecommerce-order-api",
+  "language": "java",
+  "skills": "no",
+  "pr_numbers": "80,80,80,80,80",
+  "aggregate": {
+    "iterations": 5,
+    "startup_failures": 0,
+    "pass_rate": {
+      "mean": 97.8,
+      "stddev": 0.0,
+      "min": 97.8,
+      "max": 97.8,
+      "values": [
+        97.8,
+        97.8,
+        97.8,
+        97.8,
+        97.8
+      ]
+    },
+    "score": {
+      "mean": 8,
+      "stddev": 0.0,
+      "min": 8,
+      "max": 8,
+      "values": [
+        8,
+        8,
+        8,
+        8,
+        8
+      ]
+    },
+    "passed": {
+      "mean": 89,
+      "values": [
+        89,
+        89,
+        89,
+        89,
+        89
+      ]
+    },
+    "failed": {
+      "mean": 1,
+      "values": [
+        1,
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "total": {
+      "mean": 91,
+      "values": [
+        91,
+        91,
+        91,
+        91,
+        91
+      ]
+    },
+    "test_consistency": {},
+    "category_stats": {}
+  }
+}
