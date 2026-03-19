@@ -44,32 +44,39 @@ public class CosmosConfig {
 
     private CosmosAsyncClient client;
 
-    static {
-        try {
-            Security.insertProviderAt(new TrustAllSslProvider(), 1);
-            TrustManager[] trustAllCerts = new TrustManager[]{
-                    new X509TrustManager() {
-                        public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-                        public void checkClientTrusted(X509Certificate[] certs, String authType) { }
-                        public void checkServerTrusted(X509Certificate[] certs, String authType) { }
-                    }
-            };
-            SSLContext sc = SSLContext.getInstance("TLS");
-            sc.init(null, trustAllCerts, new java.security.SecureRandom());
-            SSLContext.setDefault(sc);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to set up trust-all SSL context", e);
+    private void setupEmulatorSsl() {
+        if (endpoint != null && (endpoint.contains("localhost") || endpoint.contains("127.0.0.1"))) {
+            try {
+                Security.insertProviderAt(new TrustAllSslProvider(), 1);
+                TrustManager[] trustAllCerts = new TrustManager[]{
+                        new X509TrustManager() {
+                            public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
+                            public void checkClientTrusted(X509Certificate[] certs, String authType) { }
+                            public void checkServerTrusted(X509Certificate[] certs, String authType) { }
+                        }
+                };
+                SSLContext sc = SSLContext.getInstance("TLS");
+                sc.init(null, trustAllCerts, new java.security.SecureRandom());
+                SSLContext.setDefault(sc);
+                logger.info("SSL trust-all configured for Cosmos DB emulator");
+            } catch (Exception e) {
+                logger.warn("Failed to set up trust-all SSL context", e);
+            }
         }
+    }
+
+    private CosmosClientBuilder createClientBuilder() {
+        return new CosmosClientBuilder()
+                .endpoint(endpoint)
+                .key(key)
+                .consistencyLevel(ConsistencyLevel.SESSION)
+                .gatewayMode();
     }
 
     @Bean
     public CosmosAsyncClient cosmosAsyncClient() {
-        this.client = new CosmosClientBuilder()
-                .endpoint(endpoint)
-                .key(key)
-                .consistencyLevel(ConsistencyLevel.SESSION)
-                .gatewayMode()
-                .buildAsyncClient();
+        setupEmulatorSsl();
+        this.client = createClientBuilder().buildAsyncClient();
         return this.client;
     }
 
@@ -86,12 +93,8 @@ public class CosmosConfig {
     @PostConstruct
     public void initializeDatabase() {
         try {
-            CosmosAsyncClient initClient = new CosmosClientBuilder()
-                    .endpoint(endpoint)
-                    .key(key)
-                    .consistencyLevel(ConsistencyLevel.SESSION)
-                    .gatewayMode()
-                    .buildAsyncClient();
+            setupEmulatorSsl();
+            CosmosAsyncClient initClient = createClientBuilder().buildAsyncClient();
 
             initClient.createDatabaseIfNotExists(databaseName).block();
             CosmosAsyncDatabase db = initClient.getDatabase(databaseName);
