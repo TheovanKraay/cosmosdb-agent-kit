@@ -18,6 +18,23 @@ Each improvement entry should include:
 
 ## Improvements
 
+#### 2026-03-19: Control Run — E-Commerce Order API (Java / Spring Boot 3)
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-001-java (batch-70, control run 1/5)
+- **Skills Loaded**: ❌ No (control run — baseline measurement)
+- **Pass Rate**: 98.9% (90/91 tests passed, 1 skipped)
+- **Overall Score**: 7/10 (as-is), estimated 9/10 with skills
+- **Key Findings**:
+  - Agent correctly used `/customerId` partition key, embedded items, type discriminator, and schema versioning without skills
+  - Agent correctly handled emulator SSL (trust-all provider + SSLContext), singleton CosmosClient, and dependent @Bean chain
+  - Agent used correct field names (`total`, `createdAt`) per api-contract.yaml despite SCENARIO.md prompt using `totalAmount`/`orderDate`
+  - Main gaps: no point reads for getOrderById (cross-partition query), no ETag concurrency, no field projections, no pagination, no async SDK, no diagnostics logging, indexes all paths
+  - Rules that would have helped most: `query-avoid-cross-partition.md` (3.1), `sdk-etag-concurrency.md` (4.7), `query-project-fields.md` (3.7), `query-pagination.md` (3.4), `index-exclude-unused.md` (5.3), `sdk-diagnostics.md` (4.5), `sdk-async-apis.md` (4.1), `sdk-java-content-response.md` (4.9)
+- **Improvement**: None (control run — no rules created or updated)
+- **Files Modified**:
+  - `testing-v2/scenarios/ecommerce-order-api/iterations/iteration-001-java/ITERATION.md` (REWRITTEN with deep evaluation)
+
 #### 2026-03-12: New Rules — Parameterized TOP and Composite Index Directions
 
 - **Scenario**: gaming-leaderboard
