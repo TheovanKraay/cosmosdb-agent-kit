@@ -21,8 +21,6 @@ import org.springframework.context.annotation.Configuration;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -50,13 +48,8 @@ public class CosmosConfig {
 
     private void trustAllCertificates() {
         try {
-            TrustManager[] trustAllCerts = new TrustManager[]{
-                new X509TrustManager() {
-                    public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-                    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-                }
-            };
+            TrustAllProvider.install();
+            TrustManager[] trustAllCerts = new TrustManager[]{ TrustAllProvider.getTrustManager() };
             SSLContext sc = SSLContext.getInstance("TLS");
             sc.init(null, trustAllCerts, new java.security.SecureRandom());
             SSLContext.setDefault(sc);
