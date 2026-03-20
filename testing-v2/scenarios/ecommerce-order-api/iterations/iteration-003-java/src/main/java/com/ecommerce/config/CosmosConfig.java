@@ -18,7 +18,6 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 @Configuration
@@ -53,10 +52,7 @@ public class CosmosConfig {
     public CosmosContainer ordersContainer(CosmosDatabase database) {
         IndexingPolicy indexingPolicy = new IndexingPolicy();
         indexingPolicy.setIncludedPaths(Arrays.asList(
-                new IncludedPath("/customerId/?"),
-                new IncludedPath("/status/?"),
-                new IncludedPath("/createdAt/?"),
-                new IncludedPath("/total/?")
+                new IncludedPath("/*")
         ));
         indexingPolicy.setExcludedPaths(Arrays.asList(
                 new ExcludedPath("/items/*"),
