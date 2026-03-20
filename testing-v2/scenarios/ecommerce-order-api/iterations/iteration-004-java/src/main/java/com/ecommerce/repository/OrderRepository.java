@@ -10,7 +10,6 @@ import com.azure.cosmos.models.SqlQuerySpec;
 import com.ecommerce.model.Order;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Repository

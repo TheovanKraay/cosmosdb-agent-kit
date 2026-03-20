@@ -1,7 +1,5 @@
 package com.ecommerce.model;
 
-import java.util.Map;
-
 public class CreateOrderRequest {
     private String customerId;
     private java.util.List<OrderItem> items;
