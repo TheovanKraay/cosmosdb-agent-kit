@@ -1,0 +1,2 @@
+@echo off
+java -Dio.netty.handler.ssl.noOpenSsl=true -jar target/app.jar > "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\ecommerce-order-api\iterations\iteration-005-java\app-output.log" 2> "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\ecommerce-order-api\iterations\iteration-005-java\app-error.log"

@@ -1118,3 +1118,23 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-20: iteration-005-java - Ecommerce Order Api (Java) [skills loaded]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-005-java
+- **Skills loaded**: Yes
+- **Result**: PARTIAL -- 88/91 tests passed (96.7%)
+- **Score**: 8/10
+
+**Results by Category**:
+- api_contract: 41 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 12 passed, 2 failed, 1 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 30 passed, 0 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_type_discriminator** -- Failed: No documents have a type discriminator field. When a container holds multiple entity types (
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_schema_version** -- Failed: No documents have a schema version field. Include a 'schemaVersion' field in documents so fu
+
+**Test Results**: 88 passed, 3 failed out of 91
