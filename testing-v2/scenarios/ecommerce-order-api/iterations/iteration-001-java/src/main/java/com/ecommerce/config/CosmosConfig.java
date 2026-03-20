@@ -12,7 +12,6 @@ import com.azure.cosmos.models.ExcludedPath;
 import com.azure.cosmos.models.IncludedPath;
 import com.azure.cosmos.models.IndexingPolicy;
 import com.azure.cosmos.models.ThroughputProperties;
-import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -69,8 +68,8 @@ public class CosmosConfig {
                 new IncludedPath("/total/?")
         ));
         indexingPolicy.setExcludedPaths(Arrays.asList(
-                new ExcludedPath("/*"),
-                new ExcludedPath("/\"_etag\"/?")
+                new ExcludedPath("/\"_etag\"/?"),
+                new ExcludedPath("/*")
         ));
 
         CompositePath statusPath = new CompositePath();
