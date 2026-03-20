@@ -1,0 +1,528 @@
+# Healthcare Appointments API Contract
+# =====================================
+# This file defines the FIXED API interface that all iterations must implement.
+# Tests are written against this contract. Do NOT modify between iterations.
+#
+# The agent's generated code MUST conform to these exact paths, methods,
+# request/response schemas, and status codes.
+
+name: healthcare-appointments
+version: "1.0"
+
+# The app must expose this health endpoint for readiness detection
+health:
+  path: /health
+  method: GET
+  response:
+    status: 200
+
+endpoints:
+
+  # ----------------------------------------------------------
+  # Patient Management
+  # ----------------------------------------------------------
+
+  create_patient:
+    method: POST
+    path: /api/patients
+    description: Register a new patient
+    request:
+      body:
+        required:
+          - patientId
+          - firstName
+          - lastName
+          - email
+          - phone
+          - dateOfBirth
+        properties:
+          patientId:
+            type: string
+            description: Unique patient identifier
+          firstName:
+            type: string
+            description: Patient first name
+          lastName:
+            type: string
+            description: Patient last name
+          email:
+            type: string
+            description: Patient email address
+          phone:
+            type: string
+            description: Patient phone number
+          dateOfBirth:
+            type: string
+            description: Patient date of birth (YYYY-MM-DD)
+    response:
+      status: 201
+      body:
+        required:
+          - patientId
+          - firstName
+          - lastName
+          - email
+          - phone
+          - dateOfBirth
+        properties:
+          patientId:
+            type: string
+          firstName:
+            type: string
+          lastName:
+            type: string
+          email:
+            type: string
+          phone:
+            type: string
+          dateOfBirth:
+            type: string
+    errors:
+      - status: 409
+        description: Patient already exists
+
+  get_patient:
+    method: GET
+    path: /api/patients/{patientId}
+    description: Get a patient profile
+    parameters:
+      patientId:
+        in: path
+        type: string
+        required: true
+    response:
+      status: 200
+      body:
+        required:
+          - patientId
+          - firstName
+          - lastName
+          - email
+          - phone
+          - dateOfBirth
+        properties:
+          patientId:
+            type: string
+          firstName:
+            type: string
+          lastName:
+            type: string
+          email:
+            type: string
+          phone:
+            type: string
+          dateOfBirth:
+            type: string
+    errors:
+      - status: 404
+        description: Patient not found
+
+  # ----------------------------------------------------------
+  # Provider Management
+  # ----------------------------------------------------------
+
+  create_provider:
+    method: POST
+    path: /api/providers
+    description: Create a new healthcare provider profile
+    request:
+      body:
+        required:
+          - providerId
+          - name
+          - specialty
+          - clinicId
+        properties:
+          providerId:
+            type: string
+            description: Unique provider identifier
+          name:
+            type: string
+            description: Provider full name
+          specialty:
+            type: string
+            description: Medical specialty (e.g. "cardiology", "dermatology")
+          clinicId:
+            type: string
+            description: Clinic location the provider belongs to
+          schedule:
+            type: object
+            description: >
+              Weekly availability schedule. Keys are lowercase day names
+              (monday, tuesday, etc.), values are objects with "start" and
+              "end" times in HH:MM format (24-hour).
+    response:
+      status: 201
+      body:
+        required:
+          - providerId
+          - name
+          - specialty
+          - clinicId
+        properties:
+          providerId:
+            type: string
+          name:
+            type: string
+          specialty:
+            type: string
+          clinicId:
+            type: string
+          schedule:
+            type: object
+    errors:
+      - status: 409
+        description: Provider already exists
+
+  get_provider:
+    method: GET
+    path: /api/providers/{providerId}
+    description: Get a provider profile
+    parameters:
+      providerId:
+        in: path
+        type: string
+        required: true
+    response:
+      status: 200
+      body:
+        required:
+          - providerId
+          - name
+          - specialty
+          - clinicId
+        properties:
+          providerId:
+            type: string
+          name:
+            type: string
+          specialty:
+            type: string
+          clinicId:
+            type: string
+          schedule:
+            type: object
+    errors:
+      - status: 404
+        description: Provider not found
+
+  search_providers:
+    method: GET
+    path: /api/providers
+    description: >
+      Search for providers by specialty. Returns all providers matching the
+      given specialty, sorted by provider name ascending.
+    parameters:
+      specialty:
+        in: query
+        type: string
+        required: true
+        description: Filter providers by specialty (case-insensitive)
+    response:
+      status: 200
+      body:
+        type: array
+        items:
+          required:
+            - providerId
+            - name
+            - specialty
+            - clinicId
+          properties:
+            providerId:
+              type: string
+            name:
+              type: string
+            specialty:
+              type: string
+            clinicId:
+              type: string
+
+  # ----------------------------------------------------------
+  # Available Slots
+  # ----------------------------------------------------------
+
+  get_available_slots:
+    method: GET
+    path: /api/providers/{providerId}/slots
+    description: >
+      Get available appointment time slots for a provider on a given date.
+      Slots are 30-minute intervals within the provider's schedule for that
+      day of the week, excluding times already booked. Returns slots sorted
+      by time ascending.
+    parameters:
+      providerId:
+        in: path
+        type: string
+        required: true
+      date:
+        in: query
+        type: string
+        required: true
+        description: Date to check availability (YYYY-MM-DD)
+    response:
+      status: 200
+      body:
+        type: array
+        items:
+          required:
+            - startTime
+            - endTime
+          properties:
+            startTime:
+              type: string
+              description: Slot start time in ISO-8601 format (YYYY-MM-DDTHH:MM:SS)
+            endTime:
+              type: string
+              description: Slot end time in ISO-8601 format (YYYY-MM-DDTHH:MM:SS)
+    errors:
+      - status: 404
+        description: Provider not found
+
+  # ----------------------------------------------------------
+  # Appointment Management
+  # ----------------------------------------------------------
+
+  create_appointment:
+    method: POST
+    path: /api/appointments
+    description: Book a new appointment
+    request:
+      body:
+        required:
+          - appointmentId
+          - patientId
+          - providerId
+          - dateTime
+        properties:
+          appointmentId:
+            type: string
+            description: Unique appointment identifier
+          patientId:
+            type: string
+            description: The patient booking the appointment
+          providerId:
+            type: string
+            description: The provider for the appointment
+          dateTime:
+            type: string
+            description: Appointment start time in ISO-8601 format (YYYY-MM-DDTHH:MM:SS)
+          reason:
+            type: string
+            description: Optional reason for the appointment
+    response:
+      status: 201
+      body:
+        required:
+          - appointmentId
+          - patientId
+          - providerId
+          - dateTime
+          - status
+        properties:
+          appointmentId:
+            type: string
+          patientId:
+            type: string
+          providerId:
+            type: string
+          dateTime:
+            type: string
+          status:
+            type: string
+            description: Should be "scheduled" for new appointments
+          reason:
+            type: string
+    errors:
+      - status: 409
+        description: Appointment already exists or time slot conflict
+
+  get_appointment:
+    method: GET
+    path: /api/appointments/{appointmentId}
+    description: Get appointment details
+    parameters:
+      appointmentId:
+        in: path
+        type: string
+        required: true
+    response:
+      status: 200
+      body:
+        required:
+          - appointmentId
+          - patientId
+          - providerId
+          - dateTime
+          - status
+        properties:
+          appointmentId:
+            type: string
+          patientId:
+            type: string
+          providerId:
+            type: string
+          dateTime:
+            type: string
+          status:
+            type: string
+          reason:
+            type: string
+    errors:
+      - status: 404
+        description: Appointment not found
+
+  update_appointment_status:
+    method: PATCH
+    path: /api/appointments/{appointmentId}/status
+    description: >
+      Update the status of an appointment. Valid statuses are: scheduled,
+      completed, cancelled, no-show. Cancelled and completed appointments
+      cannot be changed further (terminal states).
+    parameters:
+      appointmentId:
+        in: path
+        type: string
+        required: true
+    request:
+      body:
+        required:
+          - status
+        properties:
+          status:
+            type: string
+            description: New status (scheduled, completed, cancelled, no-show)
+    response:
+      status: 200
+      body:
+        required:
+          - appointmentId
+          - patientId
+          - providerId
+          - dateTime
+          - status
+        properties:
+          appointmentId:
+            type: string
+          patientId:
+            type: string
+          providerId:
+            type: string
+          dateTime:
+            type: string
+          status:
+            type: string
+          reason:
+            type: string
+    errors:
+      - status: 404
+        description: Appointment not found
+      - status: 409
+        description: Invalid status transition (e.g., cancelled appointment cannot be updated)
+
+  # ----------------------------------------------------------
+  # Patient Appointments (History / Query)
+  # ----------------------------------------------------------
+
+  get_patient_appointments:
+    method: GET
+    path: /api/patients/{patientId}/appointments
+    description: >
+      Get appointments for a patient. Supports filtering by status and date
+      range. Returns appointments sorted by dateTime descending (most recent
+      first).
+    parameters:
+      patientId:
+        in: path
+        type: string
+        required: true
+      status:
+        in: query
+        type: string
+        required: false
+        description: Filter by appointment status (scheduled, completed, cancelled, no-show)
+      from:
+        in: query
+        type: string
+        required: false
+        description: Start date filter (YYYY-MM-DD), inclusive
+      to:
+        in: query
+        type: string
+        required: false
+        description: End date filter (YYYY-MM-DD), inclusive
+    response:
+      status: 200
+      body:
+        type: array
+        items:
+          required:
+            - appointmentId
+            - patientId
+            - providerId
+            - dateTime
+            - status
+          properties:
+            appointmentId:
+              type: string
+            patientId:
+              type: string
+            providerId:
+              type: string
+            dateTime:
+              type: string
+            status:
+              type: string
+            reason:
+              type: string
+    errors:
+      - status: 404
+        description: Patient not found
+
+  # ----------------------------------------------------------
+  # Provider Appointments
+  # ----------------------------------------------------------
+
+  get_provider_appointments:
+    method: GET
+    path: /api/providers/{providerId}/appointments
+    description: >
+      Get appointments for a provider on a given date. Returns appointments
+      sorted by dateTime ascending.
+    parameters:
+      providerId:
+        in: path
+        type: string
+        required: true
+      date:
+        in: query
+        type: string
+        required: true
+        description: Date to query (YYYY-MM-DD)
+    response:
+      status: 200
+      body:
+        type: array
+        items:
+          required:
+            - appointmentId
+            - patientId
+            - providerId
+            - dateTime
+            - status
+          properties:
+            appointmentId:
+              type: string
+            patientId:
+              type: string
+            providerId:
+              type: string
+            dateTime:
+              type: string
+            status:
+              type: string
+            reason:
+              type: string
+    errors:
+      - status: 404
+        description: Provider not found
