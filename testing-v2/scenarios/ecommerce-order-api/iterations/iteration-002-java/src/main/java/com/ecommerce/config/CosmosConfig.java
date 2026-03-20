@@ -83,13 +83,13 @@ public class CosmosConfig {
         customerIdPath.setPath("/customerId");
         customerIdPath.setOrder(CompositePathSortOrder.ASCENDING);
 
-        CompositePath createdAtAsc = new CompositePath();
-        createdAtAsc.setPath("/createdAt");
-        createdAtAsc.setOrder(CompositePathSortOrder.ASCENDING);
+        CompositePath createdAtDescForCustomer = new CompositePath();
+        createdAtDescForCustomer.setPath("/createdAt");
+        createdAtDescForCustomer.setOrder(CompositePathSortOrder.DESCENDING);
 
         List<List<CompositePath>> compositeIndexes = new ArrayList<>();
         compositeIndexes.add(Arrays.asList(statusPath, createdAtPath));
-        compositeIndexes.add(Arrays.asList(customerIdPath, createdAtAsc));
+        compositeIndexes.add(Arrays.asList(customerIdPath, createdAtDescForCustomer));
         indexingPolicy.setCompositeIndexes(compositeIndexes);
 
         CosmosContainerProperties containerProperties = new CosmosContainerProperties("orders", "/customerId");
