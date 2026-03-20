@@ -59,15 +59,13 @@ public class CosmosConfig {
         indexingPolicy.setAutomatic(true);
 
         List<IncludedPath> includedPaths = new ArrayList<>();
-        includedPaths.add(new IncludedPath("/customerId/?"));
-        includedPaths.add(new IncludedPath("/status/?"));
-        includedPaths.add(new IncludedPath("/createdAt/?"));
-        includedPaths.add(new IncludedPath("/orderId/?"));
+        includedPaths.add(new IncludedPath("/*"));
         indexingPolicy.setIncludedPaths(includedPaths);
 
         List<ExcludedPath> excludedPaths = new ArrayList<>();
         excludedPaths.add(new ExcludedPath("/items/*"));
         excludedPaths.add(new ExcludedPath("/shippingAddress/?"));
+        excludedPaths.add(new ExcludedPath("/\"_etag\"/?"));
         indexingPolicy.setExcludedPaths(excludedPaths);
 
         // Composite indexes for efficient sorting
