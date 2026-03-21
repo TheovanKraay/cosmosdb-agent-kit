@@ -172,7 +172,7 @@ public class OrderService {
         double totalSpent = orders.stream().mapToDouble(Order::getTotal).sum();
         summary.setTotalSpent(totalSpent);
 
-        if (orders.size() > 0) {
+        if (!orders.isEmpty()) {
             summary.setAverageOrderValue(totalSpent / orders.size());
         } else {
             summary.setAverageOrderValue(0.0);

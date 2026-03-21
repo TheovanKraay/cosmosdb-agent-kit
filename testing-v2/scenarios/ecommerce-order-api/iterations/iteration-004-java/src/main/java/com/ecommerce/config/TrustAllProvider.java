@@ -16,6 +16,10 @@ import java.security.cert.X509Certificate;
  * Custom security provider that trusts all SSL certificates.
  * Required for connecting to the Cosmos DB Emulator which uses a self-signed certificate.
  * This must be installed BEFORE SpringApplication.run() is called.
+ *
+ * WARNING: This provider disables ALL SSL certificate validation and must NEVER
+ * be used in production environments. It is intended solely for local development
+ * with the Cosmos DB Emulator.
  */
 public class TrustAllProvider extends Provider {
 
