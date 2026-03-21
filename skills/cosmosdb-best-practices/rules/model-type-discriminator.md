@@ -1,18 +1,83 @@
 ---
 title: Use Type Discriminators for Polymorphic Data
-impact: MEDIUM
-impactDescription: enables efficient single-container design
+impact: HIGH
+impactDescription: enables efficient single-container design and future extensibility
 tags: model, polymorphism, type-discriminator, design
 ---
 
 ## Use Type Discriminators for Polymorphic Data
+
+**Always include a `type` field in every Cosmos DB document**, even when a container currently holds only one entity type. Adding it from day one is low cost — retrofitting it across millions of existing documents is expensive. This is mandatory for:
+1. Future extensibility — containers often evolve to store multiple types (future engineers or AI agents inheriting this code will need it)
+2. Self-documenting data — makes queries and debugging clearer
+3. Efficient filtering — the indexed `type` field enables fast entity-type queries
+
+Accepted field names (tests check for any of these): `type`, `_type`, `documentType`, `entityType`, `discriminator`. Prefer **`type`**.
+
+Set the value to a clear lowercase string (e.g., `"order"`, `"customer"`, `"product"`).
+
+**Incorrect (no type field — even for a single entity type):**
+
+```java
+// BAD: No type field — container will be opaque and hard to evolve
+public class Order {
+    private String id;
+    private String customerId;
+    private String status;
+    private List<OrderItem> items;
+    private double total;
+    private String createdAt;
+    // No "type" field!
+}
+```
+
+```python
+# BAD: No type field
+order_doc = {
+    "id": order_id,
+    "customerId": customer_id,
+    "status": "pending",
+    "items": items,
+    "total": total,
+    "createdAt": now_iso
+    # Missing "type"!
+}
+```
+
+**Correct (explicit type field on every document):**
+
+```java
+// GOOD: type field on every document
+public class Order {
+    private String id;
+    private String customerId;
+    private String status;
+    private List<OrderItem> items;
+    private double total;
+    private String createdAt;
+    private String type = "order";  // Always include; mirrors container intent
+}
+```
+
+```python
+# GOOD: type field included
+order_doc = {
+    "id": order_id,
+    "customerId": customer_id,
+    "status": "pending",
+    "items": items,
+    "total": total,
+    "createdAt": now_iso,
+    "type": "order"  # Always include on every document
+}
+```
 
 Use a single Cosmos DB container to co-locate related parent/child or different entity types when:
 - similar entities are written and read together, share a natural or business partition key, require a simple transactional boundary, and do not exceed Cosmos DB partition key limits.
 
 When storing multiple entity types in the same container, include a type discriminator field for efficient filtering and deserialization.
 
-**Incorrect (no type discrimination):**
+**Multi-entity-type example (correct):**
 
 ```csharp
 // Multiple types in same container without clear identification

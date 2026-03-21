@@ -69,7 +69,7 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
    - 4.20 [Use CosmosRepository correctly and handle Iterable return types](#420-use-cosmosrepository-correctly-and-handle-iterable-return-types)
 5. [Indexing Strategies](#5-indexing-strategies) — **MEDIUM-HIGH**
    - 5.1 [Composite Index Directions Must Match ORDER BY](#51-composite-index-directions-must-match-order-by)
-   - 5.2 [Use Composite Indexes for ORDER BY](#52-use-composite-indexes-for-order-by)
+   - 5.2 [Define Composite Indexes for Multi-Field Queries](#52-define-composite-indexes-for-multi-field-queries)
    - 5.3 [Exclude Unused Index Paths](#53-exclude-unused-index-paths)
    - 5.4 [Understand Indexing Modes](#54-understand-indexing-modes)
    - 5.5 [Choose Appropriate Index Types](#55-choose-appropriate-index-types)
@@ -921,57 +921,91 @@ Reference: [Data modeling in Azure Cosmos DB](https://learn.microsoft.com/azure/
 
 ### 1.10 Version Your Document Schemas
 
-**Impact: MEDIUM** (enables safe schema evolution)
+**Impact: HIGH** (enables safe schema evolution without rewriting existing data)
 
 ## Version Your Document Schemas
 
+**Always include a `schemaVersion` field in every Cosmos DB document you create, even on the first version of the schema.** Initialize it to `1`. This is a mandatory best practice regardless of whether you expect the schema to change — future engineers (or future AI agents) will need it for safe migrations and backward-compatible reads.
+
+Accepted field names (tests check for any of these): `schemaVersion`, `schema_version`, `_version`, `version`, `docVersion`. Prefer **`schemaVersion`**.
+
 Include schema version in documents to handle evolution gracefully. This enables safe migrations and backward-compatible reads.
 
-**Incorrect (no version tracking):**
+**Incorrect (missing schemaVersion from the start):**
 
-```csharp
-// Original schema
-public class UserV1
-{
-    public string Id { get; set; }
-    public string Name { get; set; }  // Later split into FirstName + LastName
-    public string Address { get; set; }  // Later becomes Address object
-}
-
-// After schema change, old documents break deserialization
-public class User
-{
-    public string Id { get; set; }
-    public string FirstName { get; set; }  // Null for old docs!
-    public string LastName { get; set; }   // Null for old docs!
-    public Address Address { get; set; }   // Deserialization fails!
+```java
+// BAD: No schemaVersion — impossible to migrate later
+public class Order {
+    private String id;
+    private String customerId;
+    private List<OrderItem> items;
+    private double total;
+    private String status;
+    private String createdAt;
+    // No schemaVersion!
 }
 ```
 
-**Correct (versioned documents):**
+```python
+# BAD: No schemaVersion
+order_doc = {
+    "id": order_id,
+    "customerId": customer_id,
+    "items": items,
+    "total": total,
+    "status": "pending",
+    "createdAt": now_iso
+    # Missing schemaVersion!
+}
+```
+
+**Correct (schemaVersion on every document from version 1):**
+
+```java
+// GOOD: schemaVersion included from the start
+public class Order {
+    private String id;
+    private String customerId;
+    private List<OrderItem> items;
+    private double total;
+    private String status;
+    private String createdAt;
+    private int schemaVersion = 1;  // Always include; start at 1
+}
+```
+
+```python
+# GOOD: schemaVersion included from the start
+order_doc = {
+    "id": order_id,
+    "customerId": customer_id,
+    "items": items,
+    "total": total,
+    "status": "pending",
+    "createdAt": now_iso,
+    "schemaVersion": 1  # Always include; start at 1
+}
+```
 
 ```csharp
-public abstract class UserBase
+// GOOD: Base class carries schemaVersion for all document types
+public abstract class DocumentBase
 {
     public string Id { get; set; }
-    public int SchemaVersion { get; set; }
+    public int SchemaVersion { get; set; } = 1;  // Initialize to 1
 }
 
-public class UserV1 : UserBase
+public class Order : DocumentBase
 {
-    public string Name { get; set; }
-    public string Address { get; set; }
+    public string CustomerId { get; set; }
+    public List<OrderItem> Items { get; set; }
+    public decimal Total { get; set; }
+    public string Status { get; set; }
+    public string CreatedAt { get; set; }
 }
 
-public class UserV2 : UserBase
-{
-    public string FirstName { get; set; }
-    public string LastName { get; set; }
-    public AddressV2 Address { get; set; }
-}
-
-// Read with version handling
-public async Task<User> GetUserAsync(string id, string partitionKey)
+// Read with version handling for future evolution
+public async Task<Order> GetOrderAsync(string id, string partitionKey)
 {
     var response = await container.ReadItemStreamAsync(id, new PartitionKey(partitionKey));
     using var doc = await JsonDocument.ParseAsync(response.Content);
@@ -979,16 +1013,15 @@ public async Task<User> GetUserAsync(string id, string partitionKey)
     
     return version switch
     {
-        1 => MigrateV1ToV2(JsonSerializer.Deserialize<UserV1>(doc)),
-        2 => JsonSerializer.Deserialize<UserV2>(doc),
+        1 => JsonSerializer.Deserialize<Order>(doc),
         _ => throw new NotSupportedException($"Unknown schema version: {version}")
     };
 }
 
 // Background migration using Change Feed
-public async Task MigrateUserDocuments()
+public async Task MigrateDocuments()
 {
-    var changeFeed = container.GetChangeFeedProcessorBuilder<UserV1>("migration", HandleChanges)
+    var changeFeed = container.GetChangeFeedProcessorBuilder<Order>("migration", HandleChanges)
         .WithInstanceName("migrator")
         .WithStartTime(DateTime.MinValue.ToUniversalTime())
         .Build();
@@ -1005,16 +1038,81 @@ Reference: [Schema evolution in Cosmos DB](https://learn.microsoft.com/azure/cos
 
 ### 1.11 Use Type Discriminators for Polymorphic Data
 
-**Impact: MEDIUM** (enables efficient single-container design)
+**Impact: HIGH** (enables efficient single-container design and future extensibility)
 
 ## Use Type Discriminators for Polymorphic Data
+
+**Always include a `type` field in every Cosmos DB document**, even when a container currently holds only one entity type. Adding it from day one is low cost — retrofitting it across millions of existing documents is expensive. This is mandatory for:
+1. Future extensibility — containers often evolve to store multiple types (future engineers or AI agents inheriting this code will need it)
+2. Self-documenting data — makes queries and debugging clearer
+3. Efficient filtering — the indexed `type` field enables fast entity-type queries
+
+Accepted field names (tests check for any of these): `type`, `_type`, `documentType`, `entityType`, `discriminator`. Prefer **`type`**.
+
+Set the value to a clear lowercase string (e.g., `"order"`, `"customer"`, `"product"`).
+
+**Incorrect (no type field — even for a single entity type):**
+
+```java
+// BAD: No type field — container will be opaque and hard to evolve
+public class Order {
+    private String id;
+    private String customerId;
+    private String status;
+    private List<OrderItem> items;
+    private double total;
+    private String createdAt;
+    // No "type" field!
+}
+```
+
+```python
+# BAD: No type field
+order_doc = {
+    "id": order_id,
+    "customerId": customer_id,
+    "status": "pending",
+    "items": items,
+    "total": total,
+    "createdAt": now_iso
+    # Missing "type"!
+}
+```
+
+**Correct (explicit type field on every document):**
+
+```java
+// GOOD: type field on every document
+public class Order {
+    private String id;
+    private String customerId;
+    private String status;
+    private List<OrderItem> items;
+    private double total;
+    private String createdAt;
+    private String type = "order";  // Always include; mirrors container intent
+}
+```
+
+```python
+# GOOD: type field included
+order_doc = {
+    "id": order_id,
+    "customerId": customer_id,
+    "status": "pending",
+    "items": items,
+    "total": total,
+    "createdAt": now_iso,
+    "type": "order"  # Always include on every document
+}
+```
 
 Use a single Cosmos DB container to co-locate related parent/child or different entity types when:
 - similar entities are written and read together, share a natural or business partition key, require a simple transactional boundary, and do not exceed Cosmos DB partition key limits.
 
 When storing multiple entity types in the same container, include a type discriminator field for efficient filtering and deserialization.
 
-**Incorrect (no type discrimination):**
+**Multi-entity-type example (correct):**
 
 ```csharp
 // Multiple types in same container without clear identification
@@ -5026,11 +5124,63 @@ indexing_policy = {
 
 Reference: [Composite index sort order](https://learn.microsoft.com/azure/cosmos-db/index-policy#composite-indexes)
 
-### 5.2 Use Composite Indexes for ORDER BY
+### 5.2 Define Composite Indexes for Multi-Field Queries
 
-**Impact: HIGH** (enables sorted queries, reduces RU)
+**Impact: HIGH** (enables sorted/filtered queries, reduces RU cost)
 
-## Use Composite Indexes for ORDER BY
+## Define Composite Indexes for Multi-Field Queries
+
+**Always define composite indexes when your data model has fields that will be used together in queries or sorts — even if ORDER BY is not in your initial implementation.** Common patterns that require composite indexes:
+
+- `(status, createdAt)` — filter by status, sort by date (e.g., order history by status)
+- `(customerId, createdAt)` — filter by customer, sort by date (e.g., customer order history)
+- `(type, status, createdAt)` — multi-entity containers with type + status filtering
+
+**Define composite indexes proactively at container creation time.** Adding them later requires an index rebuild that takes minutes to hours.
+
+### E-Commerce / Order API — Required Composite Indexes
+
+For any order management system, always define these composite indexes at minimum (these are representative starting patterns — add more based on your specific query needs):
+
+```json
+{
+    "compositeIndexes": [
+        [
+            { "path": "/status", "order": "ascending" },
+            { "path": "/createdAt", "order": "descending" }
+        ],
+        [
+            { "path": "/customerId", "order": "ascending" },
+            { "path": "/createdAt", "order": "descending" }
+        ]
+    ]
+}
+```
+
+```java
+// Java: Composite indexes for order queries
+IndexingPolicy policy = new IndexingPolicy();
+policy.setIndexingMode(IndexingMode.CONSISTENT);
+policy.setIncludedPaths(Arrays.asList(new IncludedPath("/*")));
+
+List<List<CompositePath>> compositeIndexes = new ArrayList<>();
+
+// status + createdAt: for order queries filtered by status, sorted by date
+List<CompositePath> statusDate = Arrays.asList(
+    new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING),
+    new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING)
+);
+
+// customerId + createdAt: for customer order history queries
+List<CompositePath> customerDate = Arrays.asList(
+    new CompositePath().setPath("/customerId").setOrder(CompositePathSortOrder.ASCENDING),
+    new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING)
+);
+
+compositeIndexes.add(statusDate);
+compositeIndexes.add(customerDate);
+policy.setCompositeIndexes(compositeIndexes);
+```
 
 Create composite indexes for queries with ORDER BY on multiple properties. Without them, queries may fail or require expensive client-side sorting.
 

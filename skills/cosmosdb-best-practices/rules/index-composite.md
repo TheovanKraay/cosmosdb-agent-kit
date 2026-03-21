@@ -1,11 +1,63 @@
 ---
-title: Use Composite Indexes for ORDER BY
+title: Define Composite Indexes for Multi-Field Queries
 impact: HIGH
-impactDescription: enables sorted queries, reduces RU
-tags: index, composite, orderby, sorting
+impactDescription: enables sorted/filtered queries, reduces RU cost
+tags: index, composite, orderby, sorting, filtering
 ---
 
-## Use Composite Indexes for ORDER BY
+## Define Composite Indexes for Multi-Field Queries
+
+**Always define composite indexes when your data model has fields that will be used together in queries or sorts — even if ORDER BY is not in your initial implementation.** Common patterns that require composite indexes:
+
+- `(status, createdAt)` — filter by status, sort by date (e.g., order history by status)
+- `(customerId, createdAt)` — filter by customer, sort by date (e.g., customer order history)
+- `(type, status, createdAt)` — multi-entity containers with type + status filtering
+
+**Define composite indexes proactively at container creation time.** Adding them later requires an index rebuild that takes minutes to hours.
+
+### E-Commerce / Order API — Required Composite Indexes
+
+For any order management system, always define these composite indexes at minimum (these are representative starting patterns — add more based on your specific query needs):
+
+```json
+{
+    "compositeIndexes": [
+        [
+            { "path": "/status", "order": "ascending" },
+            { "path": "/createdAt", "order": "descending" }
+        ],
+        [
+            { "path": "/customerId", "order": "ascending" },
+            { "path": "/createdAt", "order": "descending" }
+        ]
+    ]
+}
+```
+
+```java
+// Java: Composite indexes for order queries
+IndexingPolicy policy = new IndexingPolicy();
+policy.setIndexingMode(IndexingMode.CONSISTENT);
+policy.setIncludedPaths(Arrays.asList(new IncludedPath("/*")));
+
+List<List<CompositePath>> compositeIndexes = new ArrayList<>();
+
+// status + createdAt: for order queries filtered by status, sorted by date
+List<CompositePath> statusDate = Arrays.asList(
+    new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING),
+    new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING)
+);
+
+// customerId + createdAt: for customer order history queries
+List<CompositePath> customerDate = Arrays.asList(
+    new CompositePath().setPath("/customerId").setOrder(CompositePathSortOrder.ASCENDING),
+    new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING)
+);
+
+compositeIndexes.add(statusDate);
+compositeIndexes.add(customerDate);
+policy.setCompositeIndexes(compositeIndexes);
+```
 
 Create composite indexes for queries with ORDER BY on multiple properties. Without them, queries may fail or require expensive client-side sorting.
 
