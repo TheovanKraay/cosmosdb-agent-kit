@@ -1118,3 +1118,26 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-21: iteration-005-java - Ecommerce Order Api (Java) [skills loaded]
+
+- **Scenario**: ecommerce-order-api
+- **Iteration**: iteration-005-java
+- **Skills loaded**: Yes
+- **Result**: PARTIAL -- 86/91 tests passed (94.5%)
+- **Score**: 8/10
+
+**Results by Category**:
+- api_contract: 41 passed, 0 failed, 0 skipped
+- build_startup: 2 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 11 passed, 3 failed, 1 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 29 passed, 1 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestIndexingPolicies::test_has_composite_indexes_for_order_queries** -- AssertionError: No container has composite indexes defined. E-commerce queries like 'orders by statu
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_type_discriminator** -- Failed: No documents have a type discriminator field. When a container holds multiple entity types (
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_schema_version** -- Failed: No documents have a schema version field. Include a 'schemaVersion' field in documents so fu
+1. **testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_update_status_empty_body_returns_4xx** -- AssertionError: Empty status update body caused a server error (500). Server must handle missing fie
+
+**Test Results**: 86 passed, 5 failed out of 91
