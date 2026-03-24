@@ -18,6 +18,7 @@ Best practices applied from Cosmos DB skills:
 
 import os
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -61,7 +62,18 @@ class SubmitScoreRequest(BaseModel):
 # ---------------------------------------------------------------------------
 # FastAPI application
 # ---------------------------------------------------------------------------
-app = FastAPI(title="Gaming Leaderboard API")
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Manage application lifecycle: startup and shutdown."""
+    yield
+    global _cosmos_client
+    if _cosmos_client:
+        await _cosmos_client.close()
+        _cosmos_client = None
+
+
+app = FastAPI(title="Gaming Leaderboard API", lifespan=lifespan)
 
 # Singleton Cosmos client – reused across all requests (SDK best practice 4.18)
 _cosmos_client: Optional[CosmosClient] = None
@@ -120,14 +132,6 @@ async def get_cosmos_resources():
         },
     )
     return _database, _players_container, _scores_container
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    global _cosmos_client
-    if _cosmos_client:
-        await _cosmos_client.close()
-        _cosmos_client = None
 
 
 # ---------------------------------------------------------------------------
