@@ -96,7 +96,9 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
 9. [Design Patterns](#9-design-patterns) — **HIGH**
    - 9.1 [Use Change Feed for cross-partition query optimization with materialized views](#91-use-change-feed-for-cross-partition-query-optimization-with-materialized-views)
    - 9.2 [Use count-based or cached rank approaches instead of full partition scans for ranking](#92-use-count-based-or-cached-rank-approaches-instead-of-full-partition-scans-for-ranking)
-   - 9.3 [Use a service layer to hydrate document references before rendering](#93-use-a-service-layer-to-hydrate-document-references-before-rendering)
+   - 9.3 [Keep Leaderboard Entries Consistent When Player Profiles Change](#93-keep-leaderboard-entries-consistent-when-player-profiles-change)
+   - 9.4 [Implement Leaderboards with a Shared-Partition Leaderboard Container](#94-implement-leaderboards-with-a-shared-partition-leaderboard-container)
+   - 9.5 [Use a service layer to hydrate document references before rendering](#95-use-a-service-layer-to-hydrate-document-references-before-rendering)
 
 ---
 
@@ -8349,9 +8351,343 @@ public class ScoreBucket
 - Consider the trade-off: exact real-time rank (more RU) vs. slightly stale rank (less RU)
 - For "nearby players ±10", combine a COUNT query with a TOP 21 query centered on the player's score
 
+**Python implementation — rank + neighbors response:**
+
+```python
+def get_player_rank(player_id):
+    # 1. Get the player's leaderboard entry (their best score)
+    try:
+        entry = leaderboard_container.read_item(item=player_id, partition_key="global")
+    except exceptions.CosmosResourceNotFoundError:
+        return None  # 404 — player not found or has no scores
+
+    player_score = entry["bestScore"]
+
+    # 2. Count players with a strictly higher score → rank
+    count_result = list(leaderboard_container.query_items(
+        query="SELECT VALUE COUNT(1) FROM c WHERE c.bestScore > @score",
+        parameters=[{"name": "@score", "value": player_score}],
+        partition_key="global",
+    ))
+    rank = (count_result[0] if count_result else 0) + 1
+
+    # 3. Fetch neighbors: top 21 players around the player's score
+    #    OFFSET by (rank - 11) clamped to 0, LIMIT 21 to get ±10
+    offset = max(0, rank - 11)
+    neighbors_raw = list(leaderboard_container.query_items(
+        query=("SELECT c.playerId, c.displayName, c.bestScore AS score FROM c "
+               "ORDER BY c.bestScore DESC, c.displayName ASC "
+               "OFFSET @offset LIMIT 21"),
+        parameters=[{"name": "@offset", "value": offset}],
+        partition_key="global",
+    ))
+    # Assign ranks to neighbors
+    neighbors = []
+    for i, n in enumerate(neighbors_raw):
+        n["rank"] = offset + i + 1
+        if n["playerId"] != player_id:   # exclude the player themselves
+            neighbors.append(n)
+
+    return {
+        "playerId": player_id,
+        "rank": rank,           # integer
+        "score": player_score,  # integer
+        "neighbors": neighbors, # array of {rank, playerId, displayName, score}
+    }
+```
+
+This pattern:
+- Requires the leaderboard container (see `pattern-leaderboard-query.md`) — all entries in one partition
+- Uses COUNT for O(1) rank calculation instead of loading all entries
+- Reuses the same `ORDER BY bestScore DESC, displayName ASC` composite index for neighbors
+- Returns the required response shape: `{playerId, rank, score, neighbors[]}`
+
 Reference: [Cosmos DB query optimization](https://learn.microsoft.com/azure/cosmos-db/nosql/query/getting-started)
 
-### 9.3 Use a service layer to hydrate document references before rendering
+### 9.3 Keep Leaderboard Entries Consistent When Player Profiles Change
+
+**Impact: HIGH** (prevents stale region data and orphaned players in leaderboards after updates and deletions)
+
+## Rule
+
+When a player's profile is updated (region, displayName) or deleted, the corresponding leaderboard entry in the leaderboard container **must also be updated or deleted in the same request handler**. Leaderboard entries are denormalized copies of player data; failing to propagate changes leaves stale or orphaned entries that break regional leaderboards and rank calculations.
+
+## Why
+
+- The leaderboard container stores a denormalized snapshot of each player's data (region, displayName, bestScore). If a player moves from "US" to "EU" and the leaderboard entry is not updated, they continue to appear in the US regional leaderboard and are invisible to the EU one.
+- Deleted players whose leaderboard entry is not removed continue to rank in the global and regional leaderboards, inflating ranks for other players and failing consistency tests.
+- Cosmos DB has no built-in cascade-delete or foreign-key enforcement. The application must explicitly maintain consistency across containers.
+
+## How
+
+### On player profile update (PATCH /api/players/{playerId})
+
+```python
+def update_player(player_id, updates):
+    # 1. Update the player document
+    player = players_container.read_item(item=player_id, partition_key=player_id)
+    player.update({k: v for k, v in updates.items() if k in ("displayName", "region")})
+    players_container.upsert_item(player)
+
+    # 2. Propagate changes to the leaderboard entry (if one exists)
+    try:
+        entry = leaderboard_container.read_item(item=player_id, partition_key="global")
+        changed = False
+        if "displayName" in updates:
+            entry["displayName"] = updates["displayName"]
+            changed = True
+        if "region" in updates:
+            entry["region"] = updates["region"]  # critical for regional leaderboard
+            changed = True
+        if changed:
+            leaderboard_container.upsert_item(entry)
+    except exceptions.CosmosResourceNotFoundError:
+        pass  # Player has no scores yet, no leaderboard entry to update
+
+    return player
+```
+
+### On player deletion (DELETE /api/players/{playerId})
+
+```python
+def delete_player(player_id):
+    # 1. Delete the player document
+    players_container.delete_item(item=player_id, partition_key=player_id)
+
+    # 2. Delete all score documents for this player
+    scores = list(scores_container.query_items(
+        query="SELECT c.id FROM c WHERE c.playerId = @pid",
+        parameters=[{"name": "@pid", "value": player_id}],
+        enable_cross_partition_query=True,
+    ))
+    for score in scores:
+        scores_container.delete_item(item=score["id"], partition_key=score["id"])
+
+    # 3. Delete the leaderboard entry (player must not appear in any leaderboard)
+    try:
+        leaderboard_container.delete_item(item=player_id, partition_key="global")
+    except exceptions.CosmosResourceNotFoundError:
+        pass  # No leaderboard entry exists (player had no scores) — that's fine
+```
+
+### Example (Good) — **Correct** pattern
+
+```python
+# PATCH /api/players/{playerId} — region change propagated to leaderboard
+updates = {"region": "EU"}
+player.update(updates)
+players_container.upsert_item(player)          # update player doc
+entry["region"] = "EU"
+leaderboard_container.upsert_item(entry)       # keep leaderboard in sync
+# Result: player now appears in EU regional leaderboard, not US
+```
+
+### Example (Bad) — **Incorrect** anti-patterns
+
+```python
+# PATCH: only updates player doc — leaderboard entry keeps stale region
+def update_player(player_id, updates):
+    player = players_container.read_item(item=player_id, partition_key=player_id)
+    player.update(updates)
+    return players_container.upsert_item(player)
+    # BUG: player moved US→EU but still shows up in US leaderboard
+
+# DELETE: only deletes player — orphan leaderboard entry lingers
+def delete_player(player_id):
+    players_container.delete_item(item=player_id, partition_key=player_id)
+    # BUG: player is gone but still ranked in the global leaderboard
+```
+
+## References
+
+- [Cosmos DB data modeling: managing relationships](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data)
+- [Denormalization patterns](https://learn.microsoft.com/azure/cosmos-db/nosql/modeling-data#denormalization)
+
+### 9.4 Implement Leaderboards with a Shared-Partition Leaderboard Container
+
+**Impact: HIGH** (eliminates 500 errors on leaderboard endpoints and enables efficient single-partition ORDER BY queries)
+
+## Rule
+
+For leaderboard scenarios, maintain a dedicated leaderboard container where all entries share a **single partition key value** (e.g., `"global"`). Each player has exactly **one entry** representing their best score. When a new score is submitted, upsert the leaderboard entry only if the new score exceeds the player's current best. Use a composite index on `(bestScore DESC, displayName ASC)` so Cosmos DB can return sorted, paginated results with a single efficient query.
+
+## Why
+
+- Cosmos DB `ORDER BY` across multiple partitions requires scatter-gather fan-out: results from every physical partition are sorted independently and then merged. This is expensive and slow for a global leaderboard. Placing all entries in one partition (partitioned by `"global"`) keeps the query single-partition and cheap.
+- Inserting a new document for every score submission creates duplicate entries per player. The leaderboard must show each player **once** with their best score. Upsert (not insert) is the correct operation.
+- Tiebreaking on a second field (e.g., `displayName ASC` when scores are equal) requires a composite index. Without one, Cosmos DB will either fail the query or return non-deterministic ordering.
+- Returning sequential ranks (1, 2, 3, …) is the responsibility of the application layer — assign rank after reading the sorted list.
+
+## How
+
+### Container design
+
+```python
+# Leaderboard container: partition key = /leaderboardKey
+# One document per player (id = playerId)
+# Value "global" co-locates all entries for cheap single-partition queries
+leaderboard_entry = {
+    "id": player_id,               # one entry per player
+    "leaderboardKey": "global",    # partition key — all entries share this value
+    "playerId": player_id,
+    "displayName": player["displayName"],
+    "region": player["region"],    # needed for regional leaderboard queries
+    "bestScore": new_score,
+}
+container.upsert_item(leaderboard_entry)
+```
+
+### Composite index for tiebreaking
+
+Define this on the leaderboard container. Without it, `ORDER BY bestScore DESC, displayName ASC` fails or returns unpredictable order.
+
+```json
+{
+  "compositeIndexes": [
+    [
+      { "path": "/bestScore", "order": "descending" },
+      { "path": "/displayName", "order": "ascending" }
+    ],
+    [
+      { "path": "/region", "order": "ascending" },
+      { "path": "/bestScore", "order": "descending" },
+      { "path": "/displayName", "order": "ascending" }
+    ]
+  ]
+}
+```
+
+### On score submission — upsert only on new best
+
+```python
+def submit_score(player_id, score):
+    # 1. Store the score document
+    score_doc = {"id": str(uuid4()), "playerId": player_id, "score": score, ...}
+    scores_container.create_item(score_doc)
+
+    # 2. Update player stats
+    player = players_container.read_item(item=player_id, partition_key=player_id)
+    player["totalGames"] = player.get("totalGames", 0) + 1
+    player["bestScore"] = max(player.get("bestScore", 0), score)
+    # update averageScore ...
+    players_container.upsert_item(player)
+
+    # 3. Upsert leaderboard entry only if new best score
+    try:
+        entry = leaderboard_container.read_item(item=player_id, partition_key="global")
+        if score > entry["bestScore"]:
+            entry["bestScore"] = score
+            leaderboard_container.upsert_item(entry)
+    except exceptions.CosmosResourceNotFoundError:
+        # First score for this player — create leaderboard entry
+        leaderboard_container.upsert_item({
+            "id": player_id,
+            "leaderboardKey": "global",
+            "playerId": player_id,
+            "displayName": player["displayName"],
+            "region": player["region"],
+            "bestScore": score,
+        })
+```
+
+### Global leaderboard query
+
+```python
+def get_global_leaderboard(top=100):
+    top = max(0, min(int(top), 100))
+    if top == 0:
+        return []
+
+    query = """
+        SELECT c.playerId, c.displayName, c.bestScore AS score
+        FROM c
+        ORDER BY c.bestScore DESC, c.displayName ASC
+        OFFSET 0 LIMIT @top
+    """
+    items = list(leaderboard_container.query_items(
+        query=query,
+        parameters=[{"name": "@top", "value": top}],
+        partition_key="global",   # single-partition — no cross-partition fan-out
+    ))
+
+    # Assign sequential 1-based ranks in application code
+    for i, item in enumerate(items):
+        item["rank"] = i + 1   # integer, not string
+
+    return items  # returns [] if no entries — never raise an error for empty
+```
+
+### Regional leaderboard query
+
+```python
+def get_regional_leaderboard(region, top=100):
+    top = max(0, min(int(top), 100))
+    if top == 0:
+        return []
+
+    query = """
+        SELECT c.playerId, c.displayName, c.bestScore AS score
+        FROM c
+        WHERE c.region = @region
+        ORDER BY c.bestScore DESC, c.displayName ASC
+        OFFSET 0 LIMIT @top
+    """
+    items = list(leaderboard_container.query_items(
+        query=query,
+        parameters=[
+            {"name": "@region", "value": region},
+            {"name": "@top", "value": top},
+        ],
+        partition_key="global",
+    ))
+
+    for i, item in enumerate(items):
+        item["rank"] = i + 1
+
+    return items  # returns [] for unknown/empty regions — never a 404 or 500
+```
+
+### Example (Good) — **Correct** pattern
+
+```python
+# One entry per player, upserted on new best — no duplicates
+{"id": "p001", "leaderboardKey": "global", "playerId": "p001",
+ "displayName": "Alice", "region": "US", "bestScore": 8200}
+
+# Single-partition query with composite-indexed ORDER BY
+query = ("SELECT c.playerId, c.displayName, c.bestScore AS score FROM c "
+         "ORDER BY c.bestScore DESC, c.displayName ASC OFFSET 0 LIMIT @top")
+items = list(container.query_items(query=query,
+             parameters=[{"name": "@top", "value": 10}],
+             partition_key="global"))
+# Assign ranks after reading
+for i, e in enumerate(items):
+    e["rank"] = i + 1
+```
+
+### Example (Bad) — **Incorrect** anti-patterns
+
+```python
+# Anti-pattern 1: insert per score → duplicate player entries
+container.create_item({"id": str(uuid4()), "leaderboardKey": "global",
+                        "playerId": "p001", "score": 8200})  # player-001 has N entries!
+
+# Anti-pattern 2: cross-partition query — expensive and slow
+items = list(container.query_items(
+    "SELECT * FROM c ORDER BY c.bestScore DESC",
+    enable_cross_partition_query=True))  # scatter-gather fan-out
+
+# Anti-pattern 3: returning string for rank — causes type assertion failures
+item["rank"] = str(i + 1)  # rank must be an integer, not "1", "2", "3"
+```
+
+## References
+
+- [Cosmos DB OFFSET LIMIT clause](https://learn.microsoft.com/azure/cosmos-db/nosql/query/offset-limit)
+- [Composite indexes for ORDER BY](https://learn.microsoft.com/azure/cosmos-db/index-policy#composite-indexes)
+- [Single-partition queries](https://learn.microsoft.com/azure/cosmos-db/nosql/query/getting-started)
+
+### 9.5 Use a service layer to hydrate document references before rendering
 
 **Impact: HIGH** (bridges document storage with frameworks expecting object graphs, prevents empty/null relationship data)
 

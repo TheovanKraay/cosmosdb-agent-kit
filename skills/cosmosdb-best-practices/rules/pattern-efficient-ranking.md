@@ -158,4 +158,55 @@ public class ScoreBucket
 - Consider the trade-off: exact real-time rank (more RU) vs. slightly stale rank (less RU)
 - For "nearby players ±10", combine a COUNT query with a TOP 21 query centered on the player's score
 
+**Python implementation — rank + neighbors response:**
+
+```python
+def get_player_rank(player_id):
+    # 1. Get the player's leaderboard entry (their best score)
+    try:
+        entry = leaderboard_container.read_item(item=player_id, partition_key="global")
+    except exceptions.CosmosResourceNotFoundError:
+        return None  # 404 — player not found or has no scores
+
+    player_score = entry["bestScore"]
+
+    # 2. Count players with a strictly higher score → rank
+    count_result = list(leaderboard_container.query_items(
+        query="SELECT VALUE COUNT(1) FROM c WHERE c.bestScore > @score",
+        parameters=[{"name": "@score", "value": player_score}],
+        partition_key="global",
+    ))
+    rank = (count_result[0] if count_result else 0) + 1
+
+    # 3. Fetch neighbors: top 21 players around the player's score
+    #    OFFSET by (rank - 11) clamped to 0, LIMIT 21 to get ±10
+    offset = max(0, rank - 11)
+    neighbors_raw = list(leaderboard_container.query_items(
+        query=("SELECT c.playerId, c.displayName, c.bestScore AS score FROM c "
+               "ORDER BY c.bestScore DESC, c.displayName ASC "
+               "OFFSET @offset LIMIT 21"),
+        parameters=[{"name": "@offset", "value": offset}],
+        partition_key="global",
+    ))
+    # Assign ranks to neighbors
+    neighbors = []
+    for i, n in enumerate(neighbors_raw):
+        n["rank"] = offset + i + 1
+        if n["playerId"] != player_id:   # exclude the player themselves
+            neighbors.append(n)
+
+    return {
+        "playerId": player_id,
+        "rank": rank,           # integer
+        "score": player_score,  # integer
+        "neighbors": neighbors, # array of {rank, playerId, displayName, score}
+    }
+```
+
+This pattern:
+- Requires the leaderboard container (see `pattern-leaderboard-query.md`) — all entries in one partition
+- Uses COUNT for O(1) rank calculation instead of loading all entries
+- Reuses the same `ORDER BY bestScore DESC, displayName ASC` composite index for neighbors
+- Returns the required response shape: `{playerId, rank, score, neighbors[]}`
+
 Reference: [Cosmos DB query optimization](https://learn.microsoft.com/azure/cosmos-db/nosql/query/getting-started)

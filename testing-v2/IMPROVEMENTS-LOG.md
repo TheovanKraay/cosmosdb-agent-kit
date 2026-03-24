@@ -1108,6 +1108,78 @@ After completing the iteration successfully, user provided GitHub samples showin
 
 ---
 
+#### 2026-03-24: Batch #143 - Gaming Leaderboard (Python / Skills Loaded)
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: Batch aggregate (5 iterations, python, skills loaded)
+- **Result**: ⚠️ PARTIAL — Mean pass rate 58.7% (σ=18.6%). All builds pass; leaderboard endpoints fail consistently in every iteration.
+- **Score**: 4.4/10 average
+
+**Consistent Failures Root Cause Analysis**:
+
+All 27 consistently-failing tests trace to two root causes:
+
+1. **Leaderboard endpoints fail in every iteration** (22 tests): The global leaderboard (`/api/leaderboards/global`), regional leaderboard (`/api/leaderboards/regional/{region}`), and player rank (`/api/players/{playerId}/rank`) endpoints return errors or incorrect data. Root cause: agents do not know the correct Cosmos DB pattern for leaderboard containers — specifically that all entries must share a single partition key to enable efficient `ORDER BY` queries, that each player must have exactly one entry (their best score, upserted not inserted), and that a composite index on `(bestScore DESC, displayName ASC)` is required for tiebreaking.
+
+2. **Leaderboard not updated on player changes** (2 tests): After updating a player's region or deleting a player, the leaderboard entry is not kept in sync. Agents update the player document but forget to propagate changes to the denormalized leaderboard entry.
+
+**Rules Created** 🆕:
+1. **`pattern-leaderboard-query.md`** — Complete leaderboard container pattern: single partition key `"global"`, one entry per player (upserted on best score), composite index for tiebreaking, sequential 1-based rank assignment, empty-region returns `[]`, type-correct integer fields (HIGH)
+2. **`pattern-leaderboard-consistency.md`** — Propagate player profile changes (region, displayName) and deletions to the leaderboard container to keep denormalized data in sync (HIGH)
+
+**Rules Updated** 🔧:
+1. **`pattern-efficient-ranking.md`** — Added Python implementation for rank + neighbors response: COUNT-based rank calculation, `OFFSET/LIMIT` query for ±10 neighbors, exact response shape `{playerId, rank, score, neighbors[]}` (HIGH)
+
+**Issues Encountered & Resolved**:
+1. **Leaderboard endpoint returns 500 / no entries** — ❌ CONSISTENT FAILURE
+   - Problem: Agents implement a leaderboard container but partition it by `playerId` or query cross-partition without the correct partition key. `ORDER BY` across partitions is expensive and the sorted query fails.
+   - Impact: ALL global leaderboard tests fail in every iteration (7 tests always-fail)
+   - Solution: New rule `pattern-leaderboard-query.md` — single `"global"` partition key, upsert on best score, composite index
+   - Status: ✅ Rule created
+
+2. **Regional leaderboard endpoint returns 500 / empty** — ❌ CONSISTENT FAILURE
+   - Problem: Same root cause as global leaderboard. Agents either build the query without the `WHERE c.region = @region` filter or don't have the region field in the leaderboard document.
+   - Impact: All 4 regional leaderboard tests always-fail
+   - Solution: Covered by `pattern-leaderboard-query.md` (regional query section)
+   - Status: ✅ Rule created
+
+3. **Player rank endpoint fails** — ❌ CONSISTENT FAILURE
+   - Problem: Agents don't have concrete guidance for implementing rank + neighbors. The existing `pattern-efficient-ranking.md` mentioned the approach but lacked Python examples.
+   - Impact: All 5 player rank contract tests always-fail
+   - Solution: Updated `pattern-efficient-ranking.md` with complete Python implementation
+   - Status: ✅ Rule updated
+
+4. **Stale leaderboard after region change / player delete** — ❌ CONSISTENT FAILURE
+   - Problem: Agents update the player document but don't propagate changes to the leaderboard container. Player stays in old region's leaderboard or deleted player stays ranked.
+   - Impact: 2 always-fail consistency tests
+   - Solution: New rule `pattern-leaderboard-consistency.md`
+   - Status: ✅ Rule created
+
+**Test Results (consistent failures — all leaderboard related)**:
+- ❌ `TestGlobalLeaderboard` (all 7) — leaderboard endpoint broken
+- ❌ `TestRegionalLeaderboard` (all 4) — regional leaderboard endpoint broken
+- ❌ `TestPlayerRank` (all 5) — rank endpoint broken
+- ❌ `TestLeaderboardTiebreaking` (2) — composite index for tiebreaking missing
+- ❌ `TestUpdateDeleteConsistency::test_deleted_player_removed_from_leaderboard` — orphaned leaderboard entry
+- ❌ `TestUpdateDeleteConsistency::test_updated_region_reflected_in_regional_leaderboard` — stale region in leaderboard
+- ❌ `TestWriteReadConsistency` leaderboard tests (3) — all caused by broken leaderboard endpoints
+- ❌ `TestEdgeCases` leaderboard tests (3) — all caused by broken leaderboard endpoints
+- ❌ `TestDataTypeCorrectness::test_leaderboard_entry_types` — broken leaderboard endpoint
+
+**Lessons for Next Iteration**:
+1. Leaderboard implementation is the single largest failure cluster — the new `pattern-leaderboard-query.md` rule should eliminate most consistently-failing tests
+2. The `"global"` single-partition approach must be explicitly stated — agents default to partitioning by playerId which breaks cross-player ORDER BY
+3. Upsert-on-best-score (not insert-per-submission) is non-obvious and needs to be stated explicitly
+4. Player profile changes must always propagate to the leaderboard — the consistency rule closes this gap
+
+**FILES MODIFIED**:
+- ✅ `skills/cosmosdb-best-practices/rules/pattern-leaderboard-query.md` — NEW (HIGH)
+- ✅ `skills/cosmosdb-best-practices/rules/pattern-leaderboard-consistency.md` — NEW (HIGH)
+- ✅ `skills/cosmosdb-best-practices/rules/pattern-efficient-ranking.md` — UPDATED (Python rank+neighbors implementation)
+- ✅ `skills/cosmosdb-best-practices/AGENTS.md` — Recompiled (72 total rules, up from 62)
+
+---
+
 ## Release History
 
 ### v1.0.0 (Initial Release)
