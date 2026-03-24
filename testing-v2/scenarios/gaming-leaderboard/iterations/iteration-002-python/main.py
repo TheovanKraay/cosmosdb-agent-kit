@@ -16,6 +16,7 @@ Cosmos DB best practices applied:
 
 import os
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -30,7 +31,23 @@ from azure.core import MatchConditions
 # Suppress SSL warnings for emulator (local development only)
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
-app = FastAPI(title="Gaming Leaderboard API")
+# ---------------------------------------------------------------------------
+# Startup / Shutdown (lifespan context manager)
+# ---------------------------------------------------------------------------
+
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    """Initialise database and containers on startup, close client on shutdown."""
+    await get_players_container()
+    await get_scores_container()
+    yield
+    global _cosmos_client
+    if _cosmos_client is not None:
+        await _cosmos_client.close()
+        _cosmos_client = None
+
+
+app = FastAPI(title="Gaming Leaderboard API", lifespan=lifespan)
 
 # ---------------------------------------------------------------------------
 # Configuration from environment variables (no hardcoded connection strings)
@@ -133,26 +150,6 @@ async def get_scores_container():
             },
         )
     return _scores_container
-
-
-# ---------------------------------------------------------------------------
-# Startup / Shutdown
-# ---------------------------------------------------------------------------
-
-@app.on_event("startup")
-async def startup():
-    """Initialise database and containers on startup."""
-    await get_players_container()
-    await get_scores_container()
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    """Close the CosmosClient on shutdown."""
-    global _cosmos_client
-    if _cosmos_client is not None:
-        await _cosmos_client.close()
-        _cosmos_client = None
 
 
 # ---------------------------------------------------------------------------
