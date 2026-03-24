@@ -61,7 +61,7 @@ async def lifespan(_app: FastAPI):
     containers = await initialize_containers()
     players_container = containers["players"]
     scores_container = containers["scores"]
-    logger.info("Cosmos DB containers initialised")
+    logger.info("Cosmos DB containers initialized")
     yield
     await close_cosmos_client()
 
