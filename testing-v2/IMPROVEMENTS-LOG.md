@@ -1118,3 +1118,30 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-30: iteration-004-python - Gaming Leaderboard (Python) [skills loaded]
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: iteration-004-python
+- **Skills loaded**: Yes
+- **Result**: PARTIAL -- 84/94 tests passed (89.4%)
+- **Score**: 7/10
+
+**Results by Category**:
+- api_contract: 44 passed, 1 failed, 0 skipped
+- build_startup: 2 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 9 passed, 2 failed, 2 skipped
+- data_integrity: 4 passed, 1 failed, 0 skipped
+- robustness: 27 passed, 4 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestDeletePlayer::test_deleted_player_returns_404_on_get** -- requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(10054, 'An existin
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_cosmos_infrastructure.TestContainerDesign::test_player_container_uses_player_id_key** -- AssertionError: Player container 'players' doesn't use playerId as partition key (has: ['/id']). Pla
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_schema_version** -- Failed: No documents have a schema version field. (Rule: model-schema-versioning)
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_data_integrity.TestPartitionKeyDesign::test_no_container_uses_id_as_sole_partition_key** -- Failed: Container 'players' uses /id as partition key. This is an anti-pattern — it prevents efficie
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestInvalidInput::test_submit_score_negative_value_returns_4xx** -- AssertionError: Negative score should return 4xx, got 201. Scores should be positive integers per th
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestDuplicateHandling::test_create_duplicate_player_does_not_return_500** -- AssertionError: Duplicate player creation returned 500 — server crashed. Expected 409 Conflict or id
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestUpdateDeleteConsistency::test_deleted_player_removed_from_leaderboard** -- requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed c
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestUpdateDeleteConsistency::test_deleted_player_scores_not_in_history** -- requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed c
+
+**Test Results**: 84 passed, 10 failed out of 94
