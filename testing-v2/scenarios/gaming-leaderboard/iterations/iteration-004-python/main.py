@@ -134,7 +134,7 @@ def initialize_database():
         indexing_policy=scores_indexing,
     )
 
-    logger.info("Cosmos DB database and containers initialised.")
+    logger.info("Cosmos DB database and containers initialized.")
 
 
 # ---------------------------------------------------------------------------
