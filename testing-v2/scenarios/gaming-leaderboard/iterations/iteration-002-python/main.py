@@ -140,12 +140,6 @@ async def init_cosmos():
             "excludedPaths": [
                 {"path": "/\"_etag\"/?"}
             ],
-            "compositeIndexes": [
-                # For score history: ORDER BY timestamp DESC
-                [
-                    {"path": "/timestamp", "order": "descending"}
-                ]
-            ]
         },
     )
 
