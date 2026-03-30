@@ -38,6 +38,7 @@ COSMOS_ENDPOINT = os.environ.get(
 )
 COSMOS_KEY = os.environ.get(
     "COSMOS_KEY",
+    # Well-known emulator key — NOT for production use
     "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
 )
 DATABASE_NAME = "gaming-leaderboard"
@@ -249,7 +250,7 @@ async def submit_score(body: dict):
 
     score_val = body["score"]
     if not isinstance(score_val, int) or score_val < 0:
-        raise HTTPException(status_code=400, detail="Score must be a positive integer")
+        raise HTTPException(status_code=400, detail="Score must be a non-negative integer")
 
     player_id = body["playerId"]
 
