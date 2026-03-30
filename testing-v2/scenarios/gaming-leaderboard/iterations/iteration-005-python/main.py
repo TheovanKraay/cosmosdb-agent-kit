@@ -262,6 +262,7 @@ def update_player(player_id: str, req: UpdatePlayerRequest):
     except exceptions.CosmosResourceNotFoundError:
         raise HTTPException(status_code=404, detail="Player not found")
 
+    old_region = None
     if req.displayName is not None:
         doc["displayName"] = req.displayName
     if req.region is not None:
@@ -272,7 +273,7 @@ def update_player(player_id: str, req: UpdatePlayerRequest):
 
     # Update leaderboard entries if displayName or region changed
     if req.displayName is not None or req.region is not None:
-        _update_leaderboard_entries_for_player(doc, old_region if req.region is not None else None)
+        _update_leaderboard_entries_for_player(doc, old_region)
 
     return _player_response(doc)
 
