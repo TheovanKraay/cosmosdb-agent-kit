@@ -18,6 +18,42 @@ Each improvement entry should include:
 
 ## Improvements
 
+#### 2026-03-30: Batch #166 — Gaming Leaderboard (Python / skills loaded)
+
+- **Scenario**: gaming-leaderboard
+- **Batch Issue**: #166
+- **Language**: python (skills loaded)
+- **Iterations evaluated**: 5 (PRs #172–#176)
+- **Aggregate Pass Rate**: 77.5% (mean), σ=14.6%, range 64.9%–96.8%
+- **Aggregate Score**: 6.6/10 (mean)
+
+**Consistent Failures (1 test)**:
+
+1. `TestUpdateDeleteConsistency::test_deleted_player_removed_from_leaderboard` — EVERY iteration
+   - **Classification**: Cosmos DB anti-pattern / missing rule
+   - **Root cause**: When using a separate leaderboard container (materialized view), deleting a player from the primary container does NOT cascade to derived containers. Cosmos DB Change Feed does not capture deletes, so agents relying solely on Change Feed for derived-container sync will silently leave orphaned leaderboard entries. All 5 iterations implemented leaderboard as a separate container but none propagated deletes to that container on player deletion.
+   - **Action**: Created new rule `pattern-propagate-deletes-across-containers.md` (HIGH impact)
+
+**Rules Created** 🆕:
+1. **`pattern-propagate-deletes-across-containers.md`** — Explicitly propagate deletes to all derived and denormalized containers. Explains that Change Feed does not surface deletes and that delete handlers must explicitly remove documents from every derived container (leaderboard views, status projections, secondary index containers, etc.). Includes Python and C# examples. (HIGH)
+
+**Rules Updated** 🔧:
+- None
+
+**Flaky Tests** (37 tests, ignored per batch evaluation recipe):
+- GlobalLeaderboard, PlayerRank, RegionalLeaderboard endpoints (40% pass rate) — stochastic LLM output; no rule gap identified
+- test_deleted_player_scores_not_in_history (40%) — related to cascade delete but flaky; the consistent failure above covers the root cause
+- Concurrent score submission (60%) — covered by existing ETag concurrency rule
+
+**Statistical Assessment**: Low confidence (σ=14.6%); high variance across iterations suggests most failures are LLM stochasticity, not systematic skill gaps.
+
+**FILES MODIFIED**:
+- ✅ `skills/cosmosdb-best-practices/rules/pattern-propagate-deletes-across-containers.md` — NEW (HIGH)
+- ✅ `skills/cosmosdb-best-practices/AGENTS.md` — Recompiled (82 total rules, up from 81)
+- ✅ `testing-v2/IMPROVEMENTS-LOG.md` — Updated
+
+---
+
 #### 2026-03-12: New Rules — Parameterized TOP and Composite Index Directions
 
 - **Scenario**: gaming-leaderboard
