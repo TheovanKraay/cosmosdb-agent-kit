@@ -79,13 +79,11 @@ async def init_cosmos():
     )
 
     # Scores container — partitioned by /playerId for per-player queries (Rule 2.7)
+    # Single-field ORDER BY (timestamp DESC) is covered by the default /* index;
+    # composite indexes require at least 2 paths, so none needed here.
     scores_indexing_policy = {
         "includedPaths": [{"path": "/*"}],
         "excludedPaths": [{"path": '/"_etag"/?'}],
-        "compositeIndexes": [
-            # For score history: ORDER BY timestamp DESC
-            [{"path": "/timestamp", "order": "descending"}]
-        ],
     }
     scores_container = await database.create_container_if_not_exists(
         id="scores",
