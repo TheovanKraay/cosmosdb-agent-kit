@@ -1118,3 +1118,25 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-03-30: iteration-005-python - Gaming Leaderboard (Python) [skills loaded]
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: iteration-005-python
+- **Skills loaded**: Yes
+- **Result**: PARTIAL -- 91/94 tests passed (96.8%)
+- **Score**: 9/10
+
+**Results by Category**:
+- api_contract: 44 passed, 1 failed, 0 skipped
+- build_startup: 2 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 13 passed, 0 failed, 0 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 29 passed, 2 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestDeletePlayer::test_deleted_player_returns_404_on_get** -- requests.exceptions.ConnectionError: ('Connection aborted.', ConnectionResetError(10054, 'An existin
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestUpdateDeleteConsistency::test_deleted_player_removed_from_leaderboard** -- requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed c
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestUpdateDeleteConsistency::test_deleted_player_scores_not_in_history** -- requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed c
+
+**Test Results**: 91 passed, 3 failed out of 94
