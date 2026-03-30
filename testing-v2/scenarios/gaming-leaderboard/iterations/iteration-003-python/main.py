@@ -167,7 +167,7 @@ async def submit_score(body: dict):
         raise HTTPException(status_code=400, detail="playerId and score are required")
 
     if not isinstance(score, (int, float)) or score < 0:
-        raise HTTPException(status_code=400, detail="score must be a non-negative integer")
+        raise HTTPException(status_code=400, detail="score must be a non-negative number")
 
     score_id = str(uuid.uuid4())
     timestamp = datetime.now(timezone.utc).isoformat()
