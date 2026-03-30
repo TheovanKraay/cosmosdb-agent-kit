@@ -289,9 +289,10 @@ async def submit_score(req: SubmitScoreRequest):
 
 @app.get("/api/leaderboards/global")
 async def global_leaderboard(top: int = Query(default=100, ge=1, le=100)):
-    # Parameterized query (Rule 3.6) — but TOP must be literal integer (Rule 3.8)
     # Cross-partition query needed for global leaderboard
     # Composite index on (bestScore DESC, displayName ASC) for efficient ORDER BY
+    # LIMIT uses f-string because Cosmos DB requires literal integers (Rule 3.8);
+    # 'top' is validated by FastAPI Query(ge=1, le=100) so int(top) is safe.
     query = f"SELECT c.playerId, c.displayName, c.bestScore FROM c WHERE c.bestScore >= 0 ORDER BY c.bestScore DESC, c.displayName ASC OFFSET 0 LIMIT {int(top)}"
 
     entries = []
@@ -316,7 +317,8 @@ async def global_leaderboard(top: int = Query(default=100, ge=1, le=100)):
 async def regional_leaderboard(
     region: str, top: int = Query(default=100, ge=1, le=100)
 ):
-    # Parameterized query with literal TOP (Rule 3.6, 3.8)
+    # LIMIT uses f-string: Cosmos DB requires literal integers (Rule 3.8);
+    # 'top' validated by FastAPI Query(ge=1, le=100).
     query = f"SELECT c.playerId, c.displayName, c.bestScore FROM c WHERE c.region = @region AND c.bestScore >= 0 ORDER BY c.bestScore DESC, c.displayName ASC OFFSET 0 LIMIT {int(top)}"
     params = [{"name": "@region", "value": region}]
 
@@ -458,8 +460,9 @@ async def get_player_scores(
     except exceptions.CosmosResourceNotFoundError:
         raise HTTPException(status_code=404, detail="Player not found")
 
-    # Query scores for this player, most recent first
-    # Single-partition query (Rule 3.1), parameterized (Rule 3.6), literal LIMIT (Rule 3.8)
+    # Single-partition query (Rule 3.1), parameterized (Rule 3.6).
+    # LIMIT uses f-string: Cosmos DB requires literal integers (Rule 3.8);
+    # 'limit' validated by FastAPI Query(ge=1, le=100).
     query = f"SELECT c.scoreId, c.playerId, c.score, c.gameMode, c.timestamp FROM c WHERE c.playerId = @playerId ORDER BY c.timestamp DESC OFFSET 0 LIMIT {int(limit)}"
     params = [{"name": "@playerId", "value": player_id}]
 
