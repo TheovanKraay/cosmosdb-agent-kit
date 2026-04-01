@@ -1118,3 +1118,36 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-04-01: iteration-003-python - Gaming Leaderboard (Python) [skills loaded]
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: iteration-003-python
+- **Skills loaded**: Yes
+- **Result**: PARTIAL -- 87/94 tests passed (92.6%)
+- **Score**: 9/10
+
+**Results by Category**:
+- api_contract: 41 passed, 4 failed, 0 skipped
+- build_startup: 2 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 13 passed, 0 failed, 0 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 28 passed, 3 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestUpdatePlayer::test_update_player_returns_200** -- AssertionError: PATCH /api/players/player-005 should return 200, got 500. Response: {"detail":"Clien
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestUpdatePlayer::test_update_player_response_has_required_fields** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestUpdatePlayer::test_update_player_reflects_new_display_name** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestDeletePlayer::test_delete_player_returns_204** -- AssertionError: DELETE /api/players/delete-me-001 should return 204, got 500
+assert 500 == 204
+ +  w
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestUpdateDeleteConsistency::test_updated_region_reflected_in_regional_leaderboard** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestUpdateDeleteConsistency::test_deleted_player_removed_from_leaderboard** -- assert 500 == 204
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_robustness.TestUpdateDeleteConsistency::test_deleted_player_scores_not_in_history** -- assert 500 == 204
+ +  where 500 = <Response [500]>.status_code
+
+**Test Results**: 87 passed, 7 failed out of 94
