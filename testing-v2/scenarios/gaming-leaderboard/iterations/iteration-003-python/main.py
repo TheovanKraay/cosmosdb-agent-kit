@@ -291,7 +291,7 @@ async def submit_score(request: Request):
         raise HTTPException(status_code=400, detail="playerId is required")
     if score is None:
         raise HTTPException(status_code=400, detail="score is required")
-    if not isinstance(score, (int, float)) or score < 0:
+    if not isinstance(score, int) or score < 0:
         raise HTTPException(status_code=400, detail="score must be a non-negative integer")
 
     score = int(score)
@@ -358,7 +358,6 @@ async def _update_player_stats(player_id: str, new_score: int, max_retries: int 
                 match_condition=MatchConditions.IfNotModified,
             )
             # Successfully wrote — now update leaderboard entries
-            best_changed = new_best != old_best
             await _upsert_leaderboard_entry(
                 player_id,
                 player_doc["displayName"],
