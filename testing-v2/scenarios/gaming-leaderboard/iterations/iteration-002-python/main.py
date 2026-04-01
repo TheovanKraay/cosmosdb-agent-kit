@@ -23,7 +23,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from azure.cosmos.aio import CosmosClient
-from azure.cosmos import PartitionKey
+from azure.cosmos import PartitionKey, ThroughputProperties
 from azure.cosmos.exceptions import CosmosResourceNotFoundError, CosmosHttpResponseError
 from azure.core import MatchConditions
 
@@ -81,7 +81,7 @@ async def init_cosmos():
                 ]
             ],
         },
-        offer_throughput={"maxThroughput": 4000},
+        offer_throughput=ThroughputProperties(auto_scale_max_throughput=4000, auto_scale_increment_percent=0),
     )
 
     # Scores container — partition on /playerId
@@ -98,7 +98,7 @@ async def init_cosmos():
                 {"path": '/"_etag"/?'},
             ],
         },
-        offer_throughput={"maxThroughput": 4000},
+        offer_throughput=ThroughputProperties(auto_scale_max_throughput=4000, auto_scale_increment_percent=0),
     )
 
     # Leaderboards container — synthetic partition key /leaderboardKey
@@ -121,7 +121,7 @@ async def init_cosmos():
                 ]
             ],
         },
-        offer_throughput={"maxThroughput": 4000},
+        offer_throughput=ThroughputProperties(auto_scale_max_throughput=4000, auto_scale_increment_percent=0),
     )
 
 
