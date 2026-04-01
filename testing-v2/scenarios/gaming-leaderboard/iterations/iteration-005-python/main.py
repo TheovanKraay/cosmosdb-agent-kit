@@ -34,11 +34,13 @@ from azure.cosmos import PartitionKey, exceptions
 # Configuration
 # ---------------------------------------------------------------------------
 COSMOS_ENDPOINT = os.environ.get("COSMOS_ENDPOINT", "https://localhost:8081")
+# Default key is the well-known Azure Cosmos DB Emulator key (not a secret)
 COSMOS_KEY = os.environ.get(
     "COSMOS_KEY",
     "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==",
 )
 DATABASE_NAME = "gaming-leaderboard"
+NEIGHBOR_RANGE = 10
 
 MAX_ETAG_RETRIES = 25
 
@@ -581,9 +583,9 @@ async def player_rank(player_id: str):
             status_code=404, detail="Player not found in leaderboard"
         )
 
-    # Get neighbors +/- 10 positions
-    start = max(0, player_index - 10)
-    end = min(len(all_entries), player_index + 11)
+    # Get neighbors +/- NEIGHBOR_RANGE positions
+    start = max(0, player_index - NEIGHBOR_RANGE)
+    end = min(len(all_entries), player_index + NEIGHBOR_RANGE + 1)
     neighbors = []
     for i in range(start, end):
         if i == player_index:
