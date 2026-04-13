@@ -1,15 +1,28 @@
 package com.multitenant.repository;
 
+import com.azure.cosmos.CosmosClient;
 import com.azure.cosmos.CosmosContainer;
+import com.azure.cosmos.CosmosDatabase;
+import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
 import com.azure.cosmos.models.CosmosItemResponse;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
+import com.azure.cosmos.models.CompositePath;
+import com.azure.cosmos.models.CompositePathSortOrder;
+import com.azure.cosmos.models.ExcludedPath;
+import com.azure.cosmos.models.IncludedPath;
+import com.azure.cosmos.models.IndexingPolicy;
 import com.azure.cosmos.models.PartitionKey;
 import com.azure.cosmos.models.PartitionKeyBuilder;
+import com.azure.cosmos.models.PartitionKeyDefinition;
+import com.azure.cosmos.models.PartitionKeyDefinitionVersion;
+import com.azure.cosmos.models.PartitionKind;
 import com.azure.cosmos.models.SqlParameter;
 import com.azure.cosmos.models.SqlQuerySpec;
+import com.azure.cosmos.models.ThroughputProperties;
 import com.azure.cosmos.util.CosmosPagedIterable;
 import com.multitenant.model.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
@@ -21,14 +34,85 @@ import java.util.stream.Collectors;
  * Rule 3.6: Use parameterized queries.
  * Rule 3.1: Minimize cross-partition queries — scope all queries to tenantId partition.
  * Rule 2.3: Hierarchical partition key (/tenantId + /type).
+ *
+ * Database and container are initialized lazily on first access to avoid
+ * blocking Spring Boot startup with Cosmos DB connectivity.
  */
 @Repository
 public class MultitenantRepository {
 
-    private final CosmosContainer container;
+    private final CosmosClient cosmosClient;
+    private final String databaseName;
+    private volatile CosmosContainer container;
 
-    public MultitenantRepository(CosmosContainer tenantsContainer) {
-        this.container = tenantsContainer;
+    public MultitenantRepository(CosmosClient cosmosClient,
+                                  @Value("${azure.cosmos.database}") String databaseName) {
+        this.cosmosClient = cosmosClient;
+        this.databaseName = databaseName;
+    }
+
+    /**
+     * Lazy initialization of database and container.
+     * Rule 2.3: Hierarchical partition keys (/tenantId + /type).
+     * Rule 5.2: Composite indexes for ORDER BY queries.
+     * Rule 5.3: Exclude unused index paths.
+     * Rule 1.11: Type discriminator — single container with type field.
+     */
+    private CosmosContainer getContainer() {
+        if (container == null) {
+            synchronized (this) {
+                if (container == null) {
+                    // Rule 4.12: Create database before container
+                    cosmosClient.createDatabaseIfNotExists(databaseName,
+                            ThroughputProperties.createAutoscaledThroughput(4000));
+                    CosmosDatabase database = cosmosClient.getDatabase(databaseName);
+
+                    // Hierarchical partition key: /tenantId + /type
+                    PartitionKeyDefinition pkDef = new PartitionKeyDefinition();
+                    pkDef.setPaths(Arrays.asList("/tenantId", "/type"));
+                    pkDef.setKind(PartitionKind.MULTI_HASH);
+                    pkDef.setVersion(PartitionKeyDefinitionVersion.V2);
+
+                    CosmosContainerProperties props = new CosmosContainerProperties("multitenant-data", pkDef);
+
+                    // Rule 5.3: Custom indexing policy with excluded paths
+                    IndexingPolicy indexingPolicy = new IndexingPolicy();
+                    indexingPolicy.setIncludedPaths(List.of(new IncludedPath("/*")));
+                    indexingPolicy.setExcludedPaths(Arrays.asList(
+                            new ExcludedPath("/description/?"),
+                            new ExcludedPath("/\"_etag\"/?")
+                    ));
+
+                    // Rule 5.2: Composite indexes for multi-field queries
+                    CompositePath statusPath = new CompositePath();
+                    statusPath.setPath("/status");
+                    statusPath.setOrder(CompositePathSortOrder.ASCENDING);
+
+                    CompositePath createdAtPath = new CompositePath();
+                    createdAtPath.setPath("/createdAt");
+                    createdAtPath.setOrder(CompositePathSortOrder.DESCENDING);
+
+                    CompositePath priorityPath = new CompositePath();
+                    priorityPath.setPath("/priority");
+                    priorityPath.setOrder(CompositePathSortOrder.ASCENDING);
+
+                    CompositePath titlePath = new CompositePath();
+                    titlePath.setPath("/title");
+                    titlePath.setOrder(CompositePathSortOrder.ASCENDING);
+
+                    indexingPolicy.setCompositeIndexes(Arrays.asList(
+                            Arrays.asList(statusPath, createdAtPath),
+                            Arrays.asList(priorityPath, titlePath)
+                    ));
+
+                    props.setIndexingPolicy(indexingPolicy);
+
+                    database.createContainerIfNotExists(props);
+                    container = database.getContainer("multitenant-data");
+                }
+            }
+        }
+        return container;
     }
 
     // ======================== TENANT OPERATIONS ========================
@@ -47,7 +131,7 @@ public class MultitenantRepository {
                 .add("tenant")
                 .build();
 
-        CosmosItemResponse<Tenant> response = container.createItem(tenant, pk, new CosmosItemRequestOptions());
+        CosmosItemResponse<Tenant> response = getContainer().createItem(tenant, pk, new CosmosItemRequestOptions());
         return response.getItem();
     }
 
@@ -58,13 +142,10 @@ public class MultitenantRepository {
                     .add("tenant")
                     .build();
 
-            CosmosItemResponse<Tenant> response = container.readItem(tenantId, pk, Tenant.class);
+            CosmosItemResponse<Tenant> response = getContainer().readItem(tenantId, pk, Tenant.class);
             return Optional.ofNullable(response.getItem());
-        } catch (Exception e) {
-            if (e.getMessage() != null && e.getMessage().contains("NotFound")) {
-                return Optional.empty();
-            }
-            if (e instanceof com.azure.cosmos.CosmosException cosmosEx && cosmosEx.getStatusCode() == 404) {
+        } catch (com.azure.cosmos.CosmosException e) {
+            if (e.getStatusCode() == 404) {
                 return Optional.empty();
             }
             throw e;
@@ -88,7 +169,7 @@ public class MultitenantRepository {
                 .add("user")
                 .build();
 
-        CosmosItemResponse<User> response = container.createItem(user, pk, new CosmosItemRequestOptions());
+        CosmosItemResponse<User> response = getContainer().createItem(user, pk, new CosmosItemRequestOptions());
         return response.getItem();
     }
 
@@ -104,7 +185,7 @@ public class MultitenantRepository {
                 .add("user")
                 .build());
 
-        CosmosPagedIterable<User> results = container.queryItems(query, options, User.class);
+        CosmosPagedIterable<User> results = getContainer().queryItems(query, options, User.class);
         return results.stream().collect(Collectors.toList());
     }
 
@@ -125,7 +206,7 @@ public class MultitenantRepository {
                 .add("project")
                 .build();
 
-        CosmosItemResponse<Project> response = container.createItem(project, pk, new CosmosItemRequestOptions());
+        CosmosItemResponse<Project> response = getContainer().createItem(project, pk, new CosmosItemRequestOptions());
         return response.getItem();
     }
 
@@ -141,7 +222,7 @@ public class MultitenantRepository {
                 .add("project")
                 .build());
 
-        CosmosPagedIterable<Project> results = container.queryItems(query, options, Project.class);
+        CosmosPagedIterable<Project> results = getContainer().queryItems(query, options, Project.class);
         return results.stream().collect(Collectors.toList());
     }
 
@@ -152,10 +233,10 @@ public class MultitenantRepository {
                     .add("project")
                     .build();
 
-            CosmosItemResponse<Project> response = container.readItem(projectId, pk, Project.class);
+            CosmosItemResponse<Project> response = getContainer().readItem(projectId, pk, Project.class);
             return Optional.ofNullable(response.getItem());
-        } catch (Exception e) {
-            if (e instanceof com.azure.cosmos.CosmosException cosmosEx && cosmosEx.getStatusCode() == 404) {
+        } catch (com.azure.cosmos.CosmosException e) {
+            if (e.getStatusCode() == 404) {
                 return Optional.empty();
             }
             throw e;
@@ -183,7 +264,7 @@ public class MultitenantRepository {
                 .add("task")
                 .build();
 
-        CosmosItemResponse<Task> response = container.createItem(task, pk, new CosmosItemRequestOptions());
+        CosmosItemResponse<Task> response = getContainer().createItem(task, pk, new CosmosItemRequestOptions());
         return response.getItem();
     }
 
@@ -202,7 +283,7 @@ public class MultitenantRepository {
                 .add("task")
                 .build());
 
-        CosmosPagedIterable<Task> results = container.queryItems(query, options, Task.class);
+        CosmosPagedIterable<Task> results = getContainer().queryItems(query, options, Task.class);
         return results.stream().collect(Collectors.toList());
     }
 
@@ -221,7 +302,7 @@ public class MultitenantRepository {
                 .add("task")
                 .build());
 
-        CosmosPagedIterable<Task> results = container.queryItems(query, options, Task.class);
+        CosmosPagedIterable<Task> results = getContainer().queryItems(query, options, Task.class);
         return results.stream().collect(Collectors.toList());
     }
 
@@ -240,7 +321,7 @@ public class MultitenantRepository {
                 .add("task")
                 .build());
 
-        CosmosPagedIterable<Task> results = container.queryItems(query, options, Task.class);
+        CosmosPagedIterable<Task> results = getContainer().queryItems(query, options, Task.class);
         return results.stream().collect(Collectors.toList());
     }
 
@@ -268,7 +349,7 @@ public class MultitenantRepository {
                 .add("task")
                 .build());
 
-        CosmosPagedIterable<Task> tasks = container.queryItems(taskQuery, options, Task.class);
+        CosmosPagedIterable<Task> tasks = getContainer().queryItems(taskQuery, options, Task.class);
         List<Task> taskList = tasks.stream().collect(Collectors.toList());
 
         analytics.setTotalTasks(taskList.size());
@@ -313,7 +394,7 @@ public class MultitenantRepository {
                 .add(type)
                 .build());
 
-        CosmosPagedIterable<Integer> results = container.queryItems(query, options, Integer.class);
+        CosmosPagedIterable<Integer> results = getContainer().queryItems(query, options, Integer.class);
         return results.stream().findFirst().orElse(0);
     }
 }
