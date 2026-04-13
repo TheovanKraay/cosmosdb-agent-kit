@@ -15,7 +15,6 @@ import com.multitenant.model.Task;
 import com.multitenant.model.Tenant;
 import com.multitenant.model.TenantAnalytics;
 import com.multitenant.model.User;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
@@ -48,7 +47,7 @@ public class MultiTenantRepository {
     }
 
     private void logRU(String operation, double requestCharge) {
-        logger.debug("{} consumed {:.2f} RUs", operation, requestCharge);
+        logger.debug("{} consumed {} RUs", operation, String.format("%.2f", requestCharge));
     }
 
     // ==================== Tenant Operations ====================
