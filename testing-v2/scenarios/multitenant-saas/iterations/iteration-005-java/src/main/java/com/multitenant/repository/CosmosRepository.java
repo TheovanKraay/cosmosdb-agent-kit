@@ -17,6 +17,7 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Cosmos DB repository layer that enforces tenant isolation.
@@ -28,6 +29,11 @@ public class CosmosRepository {
 
     private final CosmosContainer container;
     private final ObjectMapper objectMapper;
+
+    private static final Set<String> ALLOWED_FIELDS = Set.of(
+            "projectId", "userId", "taskId", "tenantId", "assigneeId",
+            "status", "priority", "role", "plan", "name", "email", "title"
+    );
 
     public CosmosRepository(CosmosContainer container) {
         this.container = container;
@@ -93,6 +99,9 @@ public class CosmosRepository {
      * Rule: query-parameterized
      */
     public JsonNode findByField(String tenantId, String type, String fieldName, String fieldValue) {
+        if (!ALLOWED_FIELDS.contains(fieldName)) {
+            throw new IllegalArgumentException("Invalid field name: " + fieldName);
+        }
         SqlQuerySpec querySpec = new SqlQuerySpec(
                 "SELECT * FROM c WHERE c.tenantId = @tenantId AND c.type = @type AND c." + fieldName + " = @fieldValue",
                 Arrays.asList(
@@ -190,6 +199,9 @@ public class CosmosRepository {
      * Rule: query-parameterized
      */
     public int countByTypeAndField(String tenantId, String type, String field, String value) {
+        if (!ALLOWED_FIELDS.contains(field)) {
+            throw new IllegalArgumentException("Invalid field name: " + field);
+        }
         SqlQuerySpec querySpec = new SqlQuerySpec(
                 "SELECT VALUE COUNT(1) FROM c WHERE c.tenantId = @tenantId AND c.type = @type AND c." + field + " = @value",
                 Arrays.asList(
