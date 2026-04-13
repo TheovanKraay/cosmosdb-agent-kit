@@ -6,6 +6,7 @@ import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
 import com.azure.cosmos.DirectConnectionConfig;
+import com.azure.cosmos.GatewayConnectionConfig;
 import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosContainerResponse;
 import com.azure.cosmos.models.CosmosDatabaseResponse;
@@ -18,6 +19,8 @@ import com.azure.cosmos.models.PartitionKeyDefinition;
 import com.azure.cosmos.models.PartitionKeyDefinitionVersion;
 import com.azure.cosmos.models.PartitionKind;
 import com.azure.cosmos.models.ThroughputProperties;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,13 +32,15 @@ import java.util.List;
 /**
  * Cosmos DB configuration following best practices:
  * - Singleton CosmosClient (rule: sdk-singleton)
- * - Direct connection mode (rule: sdk-direct-mode)
+ * - Adaptive connection mode: Gateway for emulator, Direct for production (rules: sdk-direct-mode, sdk-gateway-emulator)
  * - Hierarchical partition keys /tenantId + /type (rule: partition-hierarchical)
  * - Custom indexing policy with composite indexes (rule: index-composite)
  * - Excluded unused paths (rule: index-exclude-unused)
  */
 @Configuration
 public class CosmosConfig {
+
+    private static final Logger logger = LoggerFactory.getLogger(CosmosConfig.class);
 
     @Value("${cosmos.endpoint}")
     private String endpoint;
@@ -48,13 +53,24 @@ public class CosmosConfig {
 
     @Bean
     public CosmosClient cosmosClient() {
-        return new CosmosClientBuilder()
+        CosmosClientBuilder builder = new CosmosClientBuilder()
                 .endpoint(endpoint)
                 .key(key)
-                .directMode(DirectConnectionConfig.getDefaultConfig())
                 .consistencyLevel(ConsistencyLevel.SESSION)
-                .contentResponseOnWriteEnabled(true)
-                .buildClient();
+                .contentResponseOnWriteEnabled(true);
+
+        // Rule: Use Gateway mode for emulator (Direct mode has SSL issues),
+        // Direct mode for production
+        boolean isEmulator = endpoint.contains("localhost") || endpoint.contains("127.0.0.1");
+        if (isEmulator) {
+            logger.info("Using Gateway mode for Cosmos DB Emulator");
+            builder.gatewayMode(new GatewayConnectionConfig());
+        } else {
+            logger.info("Using Direct mode for production Cosmos DB");
+            builder.directMode(DirectConnectionConfig.getDefaultConfig());
+        }
+
+        return builder.buildClient();
     }
 
     @Bean
