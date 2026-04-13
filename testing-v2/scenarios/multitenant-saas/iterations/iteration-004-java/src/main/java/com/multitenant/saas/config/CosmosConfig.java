@@ -19,15 +19,20 @@ import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 /**
- * Cosmos DB configuration with best practices:
+ * Cosmos DB configuration with lazy initialization and retry.
+ *
+ * Uses @Component with synchronized getContainer() instead of @Bean chain
+ * so the app starts immediately and connects to Cosmos DB on first request.
+ * This avoids startup crashes when the emulator isn't ready yet.
+ *
+ * Best practices:
  * - Rule 4.16: Singleton CosmosClient
  * - Rule 4.4/4.6: Gateway mode for emulator, Direct for production
  * - Rule 4.9: contentResponseOnWriteEnabled(true)
@@ -35,10 +40,12 @@ import java.util.List;
  * - Rule 5.2: Composite indexes for multi-field queries
  * - Rule 5.1: Custom indexing policy with excluded paths
  */
-@Configuration
+@Component
 public class CosmosConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(CosmosConfig.class);
+    private static final int MAX_RETRIES = 10;
+    private static final long INITIAL_BACKOFF_MS = 2000;
 
     @Value("${azure.cosmos.endpoint}")
     private String endpoint;
@@ -49,95 +56,106 @@ public class CosmosConfig {
     @Value("${azure.cosmos.database}")
     private String databaseName;
 
-    private CosmosClient cosmosClient;
+    private volatile CosmosClient cosmosClient;
+    private volatile CosmosContainer container;
 
-    @Bean
-    public CosmosClient cosmosClient() {
-        boolean isEmulator = endpoint.contains("localhost") || endpoint.contains("127.0.0.1");
-
-        CosmosClientBuilder builder = new CosmosClientBuilder()
-                .endpoint(endpoint)
-                .key(key)
-                .consistencyLevel(ConsistencyLevel.SESSION)
-                .contentResponseOnWriteEnabled(true);
-
-        if (isEmulator) {
-            builder.gatewayMode();
-            logger.info("Using Gateway mode for Cosmos DB Emulator");
-        } else {
-            builder.directMode();
-            logger.info("Using Direct mode for production Cosmos DB");
+    public synchronized CosmosContainer getContainer() {
+        if (container != null) {
+            return container;
         }
 
-        this.cosmosClient = builder.buildClient();
-        return this.cosmosClient;
-    }
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                if (cosmosClient == null) {
+                    CosmosClientBuilder builder = new CosmosClientBuilder()
+                            .endpoint(endpoint)
+                            .key(key)
+                            .consistencyLevel(ConsistencyLevel.SESSION)
+                            .contentResponseOnWriteEnabled(true);
 
-    @Bean
-    public CosmosDatabase cosmosDatabase(CosmosClient cosmosClient) {
-        cosmosClient.createDatabaseIfNotExists(databaseName);
-        CosmosDatabase database = cosmosClient.getDatabase(databaseName);
+                    if (endpoint.contains("localhost") || endpoint.contains("127.0.0.1")) {
+                        builder.gatewayMode();
+                        logger.info("Using Gateway mode for Cosmos DB Emulator");
+                    } else {
+                        builder.directMode();
+                        logger.info("Using Direct mode for production Cosmos DB");
+                    }
 
-        // Hierarchical partition keys: /tenantId (broad) → /type (narrow)
-        PartitionKeyDefinition partitionKeyDef = new PartitionKeyDefinition();
-        partitionKeyDef.setPaths(Arrays.asList("/tenantId", "/type"));
-        partitionKeyDef.setKind(PartitionKind.MULTI_HASH);
-        partitionKeyDef.setVersion(PartitionKeyDefinitionVersion.V2);
+                    cosmosClient = builder.buildClient();
+                }
 
-        CosmosContainerProperties containerProperties = new CosmosContainerProperties(
-                "multitenant-container", partitionKeyDef);
+                cosmosClient.createDatabaseIfNotExists(databaseName);
+                CosmosDatabase database = cosmosClient.getDatabase(databaseName);
 
-        // Custom indexing policy
-        IndexingPolicy indexingPolicy = new IndexingPolicy();
-        indexingPolicy.setAutomatic(true);
-        indexingPolicy.setIncludedPaths(Collections.singletonList(new IncludedPath("/*")));
-        indexingPolicy.setExcludedPaths(Arrays.asList(
-                new ExcludedPath("/description/?"),
-                new ExcludedPath("/\"_etag\"/?")
-        ));
+                // Hierarchical partition keys: /tenantId (broad) → /type (narrow)
+                PartitionKeyDefinition partitionKeyDef = new PartitionKeyDefinition();
+                partitionKeyDef.setPaths(Arrays.asList("/tenantId", "/type"));
+                partitionKeyDef.setKind(PartitionKind.MULTI_HASH);
+                partitionKeyDef.setVersion(PartitionKeyDefinitionVersion.V2);
 
-        // Composite indexes for common query patterns
-        CompositePath typePath = new CompositePath();
-        typePath.setPath("/type");
-        typePath.setOrder(CompositePathSortOrder.ASCENDING);
+                CosmosContainerProperties containerProperties = new CosmosContainerProperties(
+                        "multitenant-container", partitionKeyDef);
 
-        CompositePath statusPath = new CompositePath();
-        statusPath.setPath("/status");
-        statusPath.setOrder(CompositePathSortOrder.ASCENDING);
+                // Custom indexing policy
+                IndexingPolicy indexingPolicy = new IndexingPolicy();
+                indexingPolicy.setAutomatic(true);
 
-        CompositePath createdAtPath = new CompositePath();
-        createdAtPath.setPath("/createdAt");
-        createdAtPath.setOrder(CompositePathSortOrder.DESCENDING);
+                List<IncludedPath> includedPaths = new ArrayList<>();
+                includedPaths.add(new IncludedPath("/*"));
+                indexingPolicy.setIncludedPaths(includedPaths);
 
-        CompositePath assigneePath = new CompositePath();
-        assigneePath.setPath("/assigneeId");
-        assigneePath.setOrder(CompositePathSortOrder.ASCENDING);
+                List<ExcludedPath> excludedPaths = new ArrayList<>();
+                excludedPaths.add(new ExcludedPath("/\"_etag\"/?"));
+                excludedPaths.add(new ExcludedPath("/description/?"));
+                excludedPaths.add(new ExcludedPath("/email/?"));
+                indexingPolicy.setExcludedPaths(excludedPaths);
 
-        CompositePath priorityPath = new CompositePath();
-        priorityPath.setPath("/priority");
-        priorityPath.setOrder(CompositePathSortOrder.ASCENDING);
+                // Composite indexes for common query patterns
+                List<List<CompositePath>> compositeIndexes = new ArrayList<>();
 
-        indexingPolicy.setCompositeIndexes(Arrays.asList(
-                Arrays.asList(typePath, statusPath, createdAtPath),
-                Arrays.asList(typePath, assigneePath),
-                Arrays.asList(typePath, priorityPath)
-        ));
+                List<CompositePath> statusIndex = new ArrayList<>();
+                statusIndex.add(new CompositePath().setPath("/type").setOrder(CompositePathSortOrder.ASCENDING));
+                statusIndex.add(new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING));
+                statusIndex.add(new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING));
+                compositeIndexes.add(statusIndex);
 
-        containerProperties.setIndexingPolicy(indexingPolicy);
+                List<CompositePath> assigneeIndex = new ArrayList<>();
+                assigneeIndex.add(new CompositePath().setPath("/type").setOrder(CompositePathSortOrder.ASCENDING));
+                assigneeIndex.add(new CompositePath().setPath("/assigneeId").setOrder(CompositePathSortOrder.ASCENDING));
+                compositeIndexes.add(assigneeIndex);
 
-        database.createContainerIfNotExists(
-                containerProperties,
-                ThroughputProperties.createAutoscaledThroughput(4000));
+                List<CompositePath> priorityIndex = new ArrayList<>();
+                priorityIndex.add(new CompositePath().setPath("/type").setOrder(CompositePathSortOrder.ASCENDING));
+                priorityIndex.add(new CompositePath().setPath("/priority").setOrder(CompositePathSortOrder.ASCENDING));
+                compositeIndexes.add(priorityIndex);
 
-        logger.info("Initialized database '{}' with container 'multitenant-container' "
-                + "using hierarchical partition keys [/tenantId, /type]", databaseName);
+                indexingPolicy.setCompositeIndexes(compositeIndexes);
+                containerProperties.setIndexingPolicy(indexingPolicy);
 
-        return database;
-    }
+                database.createContainerIfNotExists(
+                        containerProperties,
+                        ThroughputProperties.createAutoscaledThroughput(4000));
 
-    @Bean
-    public CosmosContainer cosmosContainer(CosmosDatabase cosmosDatabase) {
-        return cosmosDatabase.getContainer("multitenant-container");
+                container = database.getContainer("multitenant-container");
+                logger.info("Cosmos DB container initialized on attempt {}", attempt);
+                return container;
+
+            } catch (Exception e) {
+                logger.warn("Cosmos DB init attempt {}/{} failed: {}", attempt, MAX_RETRIES, e.getMessage());
+                if (attempt < MAX_RETRIES) {
+                    try {
+                        long backoff = INITIAL_BACKOFF_MS * (1L << (attempt - 1));
+                        Thread.sleep(Math.min(backoff, 30000));
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Interrupted during Cosmos DB initialization", ie);
+                    }
+                } else {
+                    throw new RuntimeException("Failed to initialize Cosmos DB after " + MAX_RETRIES + " attempts", e);
+                }
+            }
+        }
+        throw new RuntimeException("Failed to initialize Cosmos DB");
     }
 
     @PreDestroy
