@@ -1,7 +1,7 @@
 # iteration-002-java - Java Multitenant Saas
 
 ## Metadata
-- **Date**: 2026-04-13
+- **Date**: 2026-04-14
 - **Language/SDK**: Java
 - **Agent**: GitHub Copilot (automated iteration)
 - **Tester**: Automated CI
@@ -30,14 +30,20 @@
 
 ## Test Results
 
-**Pass rate: 97.3%** (71/73 tests passed (97.3%))
+**Pass rate: 0%** (0/0 tests passed (0%))
 
 | Status | Count |
 |--------|-------|
-| Passed | 71 |
+| Passed | 0 |
 | Failed | 0 |
-| Errors | 0 |
-| Skipped | 2 |
+| Errors | 1 |
+| Skipped | 0 |
+
+### Failures
+
+- **startup**
+  > Application failed to start. 	at io.netty.handler.ssl.util.LazyX509Certificate.verify(LazyX509Certificate.java:197) ~[netty-handler-4.1.104.Final.jar!/:4.1.104.Final]
+	at java.base/sun.security.provid
 
 ## Source Files
 
@@ -52,14 +58,11 @@ Source code archived in `source-code.zip` (40 files).
 
 | Category | Passed | Failed | Skipped |
 |----------|--------|--------|---------|
-| api_contract | 50 | 0 | 0 |
-| build_startup | 2 | 0 | 0 |
-| cosmos_infrastructure | 15 | 0 | 1 |
-| data_integrity | 6 | 0 | 1 |
+| build_startup | 1 | 1 | 0 |
 
 ## Score Summary
 
 | Category | Score | Notes |
 |----------|-------|-------|
-| API Conformance | 9/10 | 97.3% pass rate |
-| **Overall** | **9/10** | **71/73 tests passed (97.3%)** |
+| API Conformance | 1/10 | 0% pass rate |
+| **Overall** | **1/10** | **0/0 tests passed (0%)** |
