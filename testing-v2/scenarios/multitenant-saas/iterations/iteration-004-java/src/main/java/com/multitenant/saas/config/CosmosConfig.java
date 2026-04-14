@@ -49,6 +49,8 @@ public class CosmosConfig {
     private static final int MAX_RETRIES = 5;
     private static final long INITIAL_BACKOFF_MS = 500;  // Short initial backoff for fast convergence in CI
     private static final long MAX_BACKOFF_MS = 5000;     // Cap retry wait to keep each inner cycle short
+    private static final long WARMUP_TIMEOUT_MS = 110_000; // 110s total warmup budget (CI health timeout is 120s)
+    private static final long OUTER_RETRY_PAUSE_MS = 2000; // Pause between outer retry cycles
 
     @Value("${azure.cosmos.endpoint}")
     private String endpoint;
@@ -66,7 +68,7 @@ public class CosmosConfig {
     @PostConstruct
     public void warmup() {
         Thread warmupThread = new Thread(() -> {
-            long warmupDeadline = System.currentTimeMillis() + 110_000; // 110s total budget (CI health timeout is 120s)
+            long warmupDeadline = System.currentTimeMillis() + WARMUP_TIMEOUT_MS;
             logger.info("Starting Cosmos DB warmup in background (110s budget)...");
             while (System.currentTimeMillis() < warmupDeadline) {
                 try {
@@ -79,7 +81,7 @@ public class CosmosConfig {
                     logger.warn("Cosmos DB warmup attempt failed (~{}s remaining): {}", remaining, e.getMessage());
                     if (System.currentTimeMillis() < warmupDeadline) {
                         try {
-                            Thread.sleep(2000); // Brief pause before retrying the full init cycle
+                            Thread.sleep(OUTER_RETRY_PAUSE_MS); // Brief pause before retrying the full init cycle
                         } catch (InterruptedException ie) {
                             Thread.currentThread().interrupt();
                             return;
