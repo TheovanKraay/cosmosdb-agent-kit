@@ -186,27 +186,64 @@ java "-Djavax.net.ssl.trustStore=custom-cacerts" `
      -jar your-app.jar
 ```
 
-**⚠️ `COSMOS.EMULATOR_SSL_TRUST_ALL` does NOT work with Java/Netty:**
+**⚠️ `COSMOS.EMULATOR_SSL_TRUST_ALL` and `SSLContext.setDefault()` do NOT work with Java/Netty:**
 
 ```java
-// WARNING: This property does NOT work with the Java Cosmos SDK!
-// The Java SDK uses Netty with OpenSSL, which bypasses Java's SSLContext entirely.
-// Setting this property has no effect — SSL handshake will still fail.
+// WARNING: These approaches do NOT work with the Java Cosmos SDK!
+
+// 1. This system property has no effect:
 System.setProperty("COSMOS.EMULATOR_SSL_TRUST_ALL", "true");  // INEFFECTIVE!
 
-// Also ineffective as a JVM argument:
-// -DCOSMOS.EMULATOR_SSL_TRUST_ALL=true  // DOES NOT WORK
+// 2. SSLContext.setDefault() has no effect on Reactor Netty:
+SSLContext sc = SSLContext.getInstance("TLS");
+sc.init(null, trustAllCerts, new SecureRandom());
+SSLContext.setDefault(sc);  // INEFFECTIVE for Cosmos SDK!
 
-// Instead, use one of these approaches:
-// 1. Import the emulator certificate into the JDK truststore (Step 2 above)
-// 2. Use a custom truststore with -Djavax.net.ssl.trustStore (recommended)
+// The Java SDK uses Reactor Netty which creates its own SSL context via
+// TrustManagerFactory.getInstance("PKIX") — it does NOT use SSLContext.getDefault().
 ```
+
+**Solution - Alternative: Custom TrustManagerFactory Provider (when cert import fails):**
+
+When the emulator's certificate cannot be reliably imported (e.g., CI environments where the cert signature doesn't match), register a custom Java Security Provider that overrides the PKIX TrustManagerFactory to trust all certificates:
+
+```java
+// TrustAllProvider.java — Register before Spring starts
+public class TrustAllProvider extends java.security.Provider {
+    public TrustAllProvider() {
+        super("TrustAll", "1.0", "Trust all certs for emulator");
+        put("TrustManagerFactory.PKIX", TrustAllTMF.class.getName());
+        put("TrustManagerFactory.SunX509", TrustAllTMF.class.getName());
+    }
+    public static class TrustAllTMF extends javax.net.ssl.TrustManagerFactorySpi {
+        public TrustAllTMF() {}
+        protected void engineInit(java.security.KeyStore ks) {}
+        protected void engineInit(javax.net.ssl.ManagerFactoryParameters spec) {}
+        protected javax.net.ssl.TrustManager[] engineGetTrustManagers() {
+            return new javax.net.ssl.TrustManager[]{ new javax.net.ssl.X509TrustManager() {
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
+                public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
+            }};
+        }
+    }
+}
+
+// In main(), BEFORE SpringApplication.run():
+System.setProperty("io.netty.handler.ssl.noOpenSsl", "true");
+java.security.Security.insertProviderAt(new TrustAllProvider(), 1);
+```
+
+This works because Reactor Netty calls `TrustManagerFactory.getInstance("PKIX")` which searches registered Security providers in order. The custom provider intercepts the call and returns trust-all TrustManagers.
 
 **Key Points:**
 - Direct connection mode does not work reliably with the emulator even after certificate import
 - Gateway mode is required for local development with the Java SDK and emulator
-- **`COSMOS.EMULATOR_SSL_TRUST_ALL` does NOT work** — the Java SDK uses Netty/OpenSSL which ignores Java SSL system properties. You must import the emulator certificate into a JDK or custom truststore
-- The custom truststore approach avoids needing administrator access
+- **`COSMOS.EMULATOR_SSL_TRUST_ALL` does NOT work** — the Java SDK uses Netty/OpenSSL which ignores Java SSL system properties
+- **`SSLContext.setDefault()` does NOT work** — Reactor Netty creates its own SSL context via `TrustManagerFactory.getInstance()`, not `SSLContext.getDefault()`
+- **Custom Security Provider approach works** — Override the PKIX TrustManagerFactory to trust all certificates
+- The custom truststore approach (`-Djavax.net.ssl.trustStore`) avoids needing administrator access
+- Set `io.netty.handler.ssl.noOpenSsl=true` to force JDK SSL engine (required for Security Provider to take effect)
 - The emulator's well-known key is: `C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==`
 - For production, switch back to Direct mode and use your actual Cosmos DB endpoint
 

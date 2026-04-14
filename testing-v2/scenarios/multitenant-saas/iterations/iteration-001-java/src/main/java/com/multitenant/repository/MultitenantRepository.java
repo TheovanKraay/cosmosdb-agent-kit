@@ -27,6 +27,7 @@ import com.multitenant.config.CosmosDbConfiguration;
 import com.multitenant.model.*;
 import org.springframework.stereotype.Repository;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.*;
@@ -39,8 +40,8 @@ import java.util.stream.Collectors;
  * Rule 2.3: Hierarchical partition key (/tenantId + /type).
  *
  * CosmosClient, database, and container are all initialized lazily on first
- * API call with retry logic. This allows the Spring Boot app to start and
- * respond to /health without needing Cosmos DB connectivity.
+ * API call with retry logic. A @PostConstruct warmup thread starts the init
+ * in background so the connection is ready before the first test request.
  */
 @Repository
 public class MultitenantRepository {
@@ -51,6 +52,25 @@ public class MultitenantRepository {
 
     public MultitenantRepository(CosmosDbConfiguration config) {
         this.config = config;
+    }
+
+    /**
+     * Start Cosmos DB initialization in background at startup.
+     * This allows the /health endpoint to respond immediately while
+     * the Cosmos connection is being established. By the time tests
+     * start (after health check passes), the connection should be ready.
+     */
+    @PostConstruct
+    public void warmup() {
+        Thread warmupThread = new Thread(() -> {
+            try {
+                getContainer();
+            } catch (Exception e) {
+                System.err.println("Background Cosmos DB warmup failed: " + e.getMessage());
+            }
+        }, "cosmos-warmup");
+        warmupThread.setDaemon(true);
+        warmupThread.start();
     }
 
     @PreDestroy
@@ -145,7 +165,7 @@ public class MultitenantRepository {
                                         + maxRetries + " attempts", e);
                             }
                             try {
-                                Thread.sleep(attempt * 2000L);
+                                Thread.sleep(Math.min(attempt * 500L, 5000L));
                             } catch (InterruptedException ie) {
                                 Thread.currentThread().interrupt();
                                 throw new RuntimeException("Interrupted during Cosmos DB init retry", ie);
