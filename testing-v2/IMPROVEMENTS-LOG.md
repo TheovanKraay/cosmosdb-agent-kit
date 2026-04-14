@@ -1192,37 +1192,18 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
 
-#### 2026-04-14: iteration-004-java - Multitenant SaaS (Java / Spring Boot 3) [skills loaded]
+#### 2026-04-14: iteration-004-java - Multitenant Saas (Java) [skills loaded]
 
 - **Scenario**: multitenant-saas
 - **Iteration**: iteration-004-java
 - **Skills loaded**: Yes
-- **Result**: ⚠️ PARTIAL — Build passed, health endpoint passed, but first Cosmos DB request timed out (>30s pytest timeout) due to lazy init delay
-- **Score**: 5/10
+- **Result**: FAILED -- 0/0 tests passed (0%)
+- **Score**: 1/10
 
-**Rules Created** 🆕:
-1. **`sdk-java-lazy-init-warmup.md`** — Eagerly warm up Cosmos DB connection in background thread when using lazy initialization (HIGH)
+**Results by Category**:
+- build_startup: 1 passed, 1 failed, 0 skipped
 
-**Issues Encountered & Resolved**:
-1. **SSL CertPathValidatorException at startup** — 🔧 SDK/FRAMEWORK QUIRK
-   - Problem: Eager `@Bean` chain triggered Netty SSL handshake with emulator's self-signed cert
-   - Impact: App crashed on startup (attempt 1/3)
-   - Solution: Added trust-all SSLContext + `io.netty.handler.ssl.noOpenSsl=true` in `main()`, switched to lazy `@Component` with `getContainer()` retry loop
-   - Status: ✅ Fixed (f96c90c)
+**Issues Encountered**:
+1. **startup** -- Application failed to start. .4%), (2026-04-14T15:14:30.487227600Z 16.8%)","availableProcessors":4},
 
-2. **First API request timeout** — 🔧 SDK/FRAMEWORK QUIRK
-   - Problem: Lazy init defers `createDatabaseIfNotExists` + `createContainerIfNotExists` to first request; combined with 2000ms initial backoff, the 30s pytest timeout expired
-   - Impact: `test_create_tenant_returns_201` timed out; all subsequent tests did not run
-   - Solution: Added `@PostConstruct` background warmup thread, reduced initial backoff from 2000ms to 500ms, capped max backoff at 10s
-   - Status: ✅ Fixed
-   - New rule: `sdk-java-lazy-init-warmup.md`
-
-**Test Results**:
-- ✅ build (BUILD SUCCESS)
-- ✅ health_returns_200
-- ✅ health_response_has_status
-- ❌ test_create_tenant_returns_201 — timed out (lazy init too slow)
-- ⏭️ All remaining tests skipped (pytest aborted after timeout)
-
-**Best Practices Applied**: 15+ rules applied correctly (singleton client, HPK, parameterized queries, gateway mode, composite indexes, custom indexing, type discriminator, schemaVersion, etag field, autoscale throughput, contentResponseOnWriteEnabled)
-**Lessons for Next Iteration**: Always add eager background warmup when using lazy Cosmos DB initialization in Java
+**Test Results**: 0 passed, 0 failed out of 0
