@@ -46,9 +46,9 @@ import java.util.List;
 public class CosmosConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(CosmosConfig.class);
-    private static final int MAX_RETRIES = 10;
+    private static final int MAX_RETRIES = 5;
     private static final long INITIAL_BACKOFF_MS = 500;  // Short initial backoff for fast convergence in CI
-    private static final long MAX_BACKOFF_MS = 10000;    // Cap retry wait to avoid exceeding test timeouts
+    private static final long MAX_BACKOFF_MS = 5000;     // Cap retry wait to keep each inner cycle short
 
     @Value("${azure.cosmos.endpoint}")
     private String endpoint;
@@ -66,14 +66,28 @@ public class CosmosConfig {
     @PostConstruct
     public void warmup() {
         Thread warmupThread = new Thread(() -> {
-            try {
-                logger.info("Starting Cosmos DB warmup in background...");
-                getContainer();
-                ready = true;
-                logger.info("Cosmos DB warmup completed successfully");
-            } catch (Exception e) {
-                logger.warn("Cosmos DB warmup failed (will retry on first request): {}", e.getMessage());
+            long warmupDeadline = System.currentTimeMillis() + 110_000; // 110s total budget (CI health timeout is 120s)
+            logger.info("Starting Cosmos DB warmup in background (110s budget)...");
+            while (System.currentTimeMillis() < warmupDeadline) {
+                try {
+                    getContainer();
+                    ready = true;
+                    logger.info("Cosmos DB warmup completed successfully");
+                    return;
+                } catch (Exception e) {
+                    long remaining = (warmupDeadline - System.currentTimeMillis()) / 1000;
+                    logger.warn("Cosmos DB warmup attempt failed (~{}s remaining): {}", remaining, e.getMessage());
+                    if (System.currentTimeMillis() < warmupDeadline) {
+                        try {
+                            Thread.sleep(2000); // Brief pause before retrying the full init cycle
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
+                    }
+                }
             }
+            logger.error("Cosmos DB warmup exhausted 110s budget — health will remain 503");
         }, "cosmos-warmup");
         warmupThread.setDaemon(true);
         warmupThread.start();
