@@ -1,2 +1,0 @@
-@echo off
-java -jar target/app.jar > "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\multitenant-saas\iterations\iteration-001-java\app-output.log" 2> "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\multitenant-saas\iterations\iteration-001-java\app-error.log"
