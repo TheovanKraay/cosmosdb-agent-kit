@@ -1191,3 +1191,19 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-04-14: iteration-001-java - Multitenant Saas (Java) [skills loaded]
+
+- **Scenario**: multitenant-saas
+- **Iteration**: iteration-001-java
+- **Skills loaded**: Yes
+- **Result**: FAILED -- 0/0 tests passed (0%)
+- **Score**: 1/10
+
+**Results by Category**:
+- build_startup: 1 passed, 1 failed, 0 skipped
+
+**Issues Encountered**:
+1. **startup** -- Application failed to start. e7c-8f94-9d451cd11dcc","connectionMode":"GATEWAY","numberOfClients":1,"
+
+**Test Results**: 0 passed, 0 failed out of 0
