@@ -1,6 +1,8 @@
 package com.multitenant.repository;
 
+import com.azure.cosmos.ConsistencyLevel;
 import com.azure.cosmos.CosmosClient;
+import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
 import com.azure.cosmos.CosmosDatabase;
 import com.azure.cosmos.models.CosmosContainerProperties;
@@ -21,10 +23,11 @@ import com.azure.cosmos.models.SqlParameter;
 import com.azure.cosmos.models.SqlQuerySpec;
 import com.azure.cosmos.models.ThroughputProperties;
 import com.azure.cosmos.util.CosmosPagedIterable;
+import com.multitenant.config.CosmosDbConfiguration;
 import com.multitenant.model.*;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
+import jakarta.annotation.PreDestroy;
 import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,80 +38,120 @@ import java.util.stream.Collectors;
  * Rule 3.1: Minimize cross-partition queries — scope all queries to tenantId partition.
  * Rule 2.3: Hierarchical partition key (/tenantId + /type).
  *
- * Database and container are initialized lazily on first access to avoid
- * blocking Spring Boot startup with Cosmos DB connectivity.
+ * CosmosClient, database, and container are all initialized lazily on first
+ * API call with retry logic. This allows the Spring Boot app to start and
+ * respond to /health without needing Cosmos DB connectivity.
  */
 @Repository
 public class MultitenantRepository {
 
-    private final CosmosClient cosmosClient;
-    private final String databaseName;
+    private final CosmosDbConfiguration config;
+    private volatile CosmosClient cosmosClient;
     private volatile CosmosContainer container;
 
-    public MultitenantRepository(CosmosClient cosmosClient,
-                                  @Value("${azure.cosmos.database}") String databaseName) {
-        this.cosmosClient = cosmosClient;
-        this.databaseName = databaseName;
+    public MultitenantRepository(CosmosDbConfiguration config) {
+        this.config = config;
+    }
+
+    @PreDestroy
+    public void cleanup() {
+        if (cosmosClient != null) {
+            cosmosClient.close();
+        }
     }
 
     /**
-     * Lazy initialization of database and container.
+     * Lazy initialization of CosmosClient, database, and container with retry.
+     * Rule 4.8: gatewayMode() for emulator.
+     * Rule 4.11: contentResponseOnWriteEnabled(true).
      * Rule 2.3: Hierarchical partition keys (/tenantId + /type).
-     * Rule 5.2: Composite indexes for ORDER BY queries.
-     * Rule 5.3: Exclude unused index paths.
-     * Rule 1.11: Type discriminator — single container with type field.
+     * Rule 5.2: Composite indexes.
+     * Rule 5.3: Excluded index paths.
      */
     private CosmosContainer getContainer() {
         if (container == null) {
             synchronized (this) {
                 if (container == null) {
-                    // Rule 4.12: Create database before container
-                    cosmosClient.createDatabaseIfNotExists(databaseName,
-                            ThroughputProperties.createAutoscaledThroughput(4000));
-                    CosmosDatabase database = cosmosClient.getDatabase(databaseName);
+                    int maxRetries = 10;
+                    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                        try {
+                            // Create CosmosClient lazily
+                            cosmosClient = new CosmosClientBuilder()
+                                    .endpoint(config.getEndpoint())
+                                    .key(config.getKey())
+                                    .consistencyLevel(ConsistencyLevel.SESSION)
+                                    .contentResponseOnWriteEnabled(true)
+                                    .gatewayMode()
+                                    .buildClient();
 
-                    // Hierarchical partition key: /tenantId + /type
-                    PartitionKeyDefinition pkDef = new PartitionKeyDefinition();
-                    pkDef.setPaths(Arrays.asList("/tenantId", "/type"));
-                    pkDef.setKind(PartitionKind.MULTI_HASH);
-                    pkDef.setVersion(PartitionKeyDefinitionVersion.V2);
+                            // Create database
+                            cosmosClient.createDatabaseIfNotExists(config.getDatabaseName(),
+                                    ThroughputProperties.createAutoscaledThroughput(4000));
+                            CosmosDatabase database = cosmosClient.getDatabase(config.getDatabaseName());
 
-                    CosmosContainerProperties props = new CosmosContainerProperties("multitenant-data", pkDef);
+                            // Hierarchical partition key: /tenantId + /type
+                            PartitionKeyDefinition pkDef = new PartitionKeyDefinition();
+                            pkDef.setPaths(Arrays.asList("/tenantId", "/type"));
+                            pkDef.setKind(PartitionKind.MULTI_HASH);
+                            pkDef.setVersion(PartitionKeyDefinitionVersion.V2);
 
-                    // Rule 5.3: Custom indexing policy with excluded paths
-                    IndexingPolicy indexingPolicy = new IndexingPolicy();
-                    indexingPolicy.setIncludedPaths(List.of(new IncludedPath("/*")));
-                    indexingPolicy.setExcludedPaths(Arrays.asList(
-                            new ExcludedPath("/description/?"),
-                            new ExcludedPath("/\"_etag\"/?")
-                    ));
+                            CosmosContainerProperties props = new CosmosContainerProperties("multitenant-data", pkDef);
 
-                    // Rule 5.2: Composite indexes for multi-field queries
-                    CompositePath statusPath = new CompositePath();
-                    statusPath.setPath("/status");
-                    statusPath.setOrder(CompositePathSortOrder.ASCENDING);
+                            // Rule 5.3: Custom indexing policy with excluded paths
+                            IndexingPolicy indexingPolicy = new IndexingPolicy();
+                            indexingPolicy.setIncludedPaths(List.of(new IncludedPath("/*")));
+                            indexingPolicy.setExcludedPaths(Arrays.asList(
+                                    new ExcludedPath("/description/?"),
+                                    new ExcludedPath("/\"_etag\"/?")
+                            ));
 
-                    CompositePath createdAtPath = new CompositePath();
-                    createdAtPath.setPath("/createdAt");
-                    createdAtPath.setOrder(CompositePathSortOrder.DESCENDING);
+                            // Rule 5.2: Composite indexes for multi-field queries
+                            CompositePath statusPath = new CompositePath();
+                            statusPath.setPath("/status");
+                            statusPath.setOrder(CompositePathSortOrder.ASCENDING);
 
-                    CompositePath priorityPath = new CompositePath();
-                    priorityPath.setPath("/priority");
-                    priorityPath.setOrder(CompositePathSortOrder.ASCENDING);
+                            CompositePath createdAtPath = new CompositePath();
+                            createdAtPath.setPath("/createdAt");
+                            createdAtPath.setOrder(CompositePathSortOrder.DESCENDING);
 
-                    CompositePath titlePath = new CompositePath();
-                    titlePath.setPath("/title");
-                    titlePath.setOrder(CompositePathSortOrder.ASCENDING);
+                            CompositePath priorityPath = new CompositePath();
+                            priorityPath.setPath("/priority");
+                            priorityPath.setOrder(CompositePathSortOrder.ASCENDING);
 
-                    indexingPolicy.setCompositeIndexes(Arrays.asList(
-                            Arrays.asList(statusPath, createdAtPath),
-                            Arrays.asList(priorityPath, titlePath)
-                    ));
+                            CompositePath titlePath = new CompositePath();
+                            titlePath.setPath("/title");
+                            titlePath.setOrder(CompositePathSortOrder.ASCENDING);
 
-                    props.setIndexingPolicy(indexingPolicy);
+                            indexingPolicy.setCompositeIndexes(Arrays.asList(
+                                    Arrays.asList(statusPath, createdAtPath),
+                                    Arrays.asList(priorityPath, titlePath)
+                            ));
 
-                    database.createContainerIfNotExists(props);
-                    container = database.getContainer("multitenant-data");
+                            props.setIndexingPolicy(indexingPolicy);
+
+                            database.createContainerIfNotExists(props);
+                            container = database.getContainer("multitenant-data");
+                            System.out.println("Cosmos DB initialized successfully on attempt " + attempt);
+                            break;
+                        } catch (Exception e) {
+                            System.err.println("Cosmos DB init attempt " + attempt + "/" + maxRetries
+                                    + " failed: " + e.getMessage());
+                            if (cosmosClient != null) {
+                                try { cosmosClient.close(); } catch (Exception ignored) {}
+                                cosmosClient = null;
+                            }
+                            if (attempt == maxRetries) {
+                                throw new RuntimeException("Failed to initialize Cosmos DB after "
+                                        + maxRetries + " attempts", e);
+                            }
+                            try {
+                                Thread.sleep(attempt * 2000L);
+                            } catch (InterruptedException ie) {
+                                Thread.currentThread().interrupt();
+                                throw new RuntimeException("Interrupted during Cosmos DB init retry", ie);
+                            }
+                        }
+                    }
                 }
             }
         }
