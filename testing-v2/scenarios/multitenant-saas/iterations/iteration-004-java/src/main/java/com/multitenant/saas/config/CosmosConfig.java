@@ -15,6 +15,7 @@ import com.azure.cosmos.models.PartitionKeyDefinition;
 import com.azure.cosmos.models.PartitionKeyDefinitionVersion;
 import com.azure.cosmos.models.PartitionKind;
 import com.azure.cosmos.models.ThroughputProperties;
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +31,8 @@ import java.util.List;
  *
  * Uses @Component with synchronized getContainer() instead of @Bean chain
  * so the app starts immediately and connects to Cosmos DB on first request.
- * This avoids startup crashes when the emulator isn't ready yet.
+ * A background warmup thread eagerly initializes the connection after Spring
+ * starts so the container is ready before the first API request arrives.
  *
  * Best practices:
  * - Rule 4.16: Singleton CosmosClient
@@ -45,7 +47,7 @@ public class CosmosConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(CosmosConfig.class);
     private static final int MAX_RETRIES = 10;
-    private static final long INITIAL_BACKOFF_MS = 2000;
+    private static final long INITIAL_BACKOFF_MS = 500;
 
     @Value("${azure.cosmos.endpoint}")
     private String endpoint;
@@ -58,6 +60,21 @@ public class CosmosConfig {
 
     private volatile CosmosClient cosmosClient;
     private volatile CosmosContainer container;
+
+    @PostConstruct
+    public void warmup() {
+        Thread warmupThread = new Thread(() -> {
+            try {
+                logger.info("Starting Cosmos DB warmup in background...");
+                getContainer();
+                logger.info("Cosmos DB warmup completed successfully");
+            } catch (Exception e) {
+                logger.warn("Cosmos DB warmup failed (will retry on first request): {}", e.getMessage());
+            }
+        }, "cosmos-warmup");
+        warmupThread.setDaemon(true);
+        warmupThread.start();
+    }
 
     public synchronized CosmosContainer getContainer() {
         if (container != null) {
@@ -145,7 +162,7 @@ public class CosmosConfig {
                 if (attempt < MAX_RETRIES) {
                     try {
                         long backoff = INITIAL_BACKOFF_MS * (1L << (attempt - 1));
-                        Thread.sleep(Math.min(backoff, 30000));
+                        Thread.sleep(Math.min(backoff, 10000));
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         throw new RuntimeException("Interrupted during Cosmos DB initialization", ie);

@@ -62,18 +62,19 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
    - 4.10 [Configure Excluded Regions for Dynamic Failover](#410-configure-excluded-regions-for-dynamic-failover)
    - 4.11 [Unwrap CosmosItemResponse and enable content response in Java SDK](#411-unwrap-cosmositemresponse-and-enable-content-response-in-java-sdk)
    - 4.12 [Use dependent @Bean methods for Cosmos DB initialization in Spring Boot](#412-use-dependent-bean-methods-for-cosmos-db-initialization-in-spring-boot)
-   - 4.13 [Spring Boot and Java version compatibility for Cosmos DB SDK](#413-spring-boot-and-java-version-compatibility-for-cosmos-db-sdk)
-   - 4.14 [Configure local development environment to avoid cloud connection conflicts](#414-configure-local-development-environment-to-avoid-cloud-connection-conflicts)
-   - 4.15 [Explicitly reference Newtonsoft.Json package](#415-explicitly-reference-newtonsoft-json-package)
-   - 4.16 [Use the Patch API for atomic counter increments](#416-use-the-patch-api-for-atomic-counter-increments)
-   - 4.17 [Configure Preferred Regions for Availability](#417-configure-preferred-regions-for-availability)
-   - 4.18 [Include aiohttp When Using Python Async SDK](#418-include-aiohttp-when-using-python-async-sdk)
-   - 4.19 [Never share a single CosmosItemRequestOptions instance across multiple createItem calls](#419-never-share-a-single-cosmositemrequestoptions-instance-across-multiple-createitem-calls)
-   - 4.20 [Handle 429 Errors with Retry-After](#420-handle-429-errors-with-retry-after)
-   - 4.21 [Use consistent enum serialization between Cosmos SDK and application layer](#421-use-consistent-enum-serialization-between-cosmos-sdk-and-application-layer)
-   - 4.22 [Reuse CosmosClient as Singleton](#422-reuse-cosmosclient-as-singleton)
-   - 4.23 [Annotate entities for Spring Data Cosmos with @Container, @PartitionKey, and String IDs](#423-annotate-entities-for-spring-data-cosmos-with-container-partitionkey-and-string-ids)
-   - 4.24 [Use CosmosRepository correctly and handle Iterable return types](#424-use-cosmosrepository-correctly-and-handle-iterable-return-types)
+   - 4.13 [Eagerly warm up Cosmos DB connection in background thread when using lazy initialization](#413-eagerly-warm-up-cosmos-db-connection-in-background-thread-when-using-lazy-initialization)
+   - 4.14 [Spring Boot and Java version compatibility for Cosmos DB SDK](#414-spring-boot-and-java-version-compatibility-for-cosmos-db-sdk)
+   - 4.15 [Configure local development environment to avoid cloud connection conflicts](#415-configure-local-development-environment-to-avoid-cloud-connection-conflicts)
+   - 4.16 [Explicitly reference Newtonsoft.Json package](#416-explicitly-reference-newtonsoft-json-package)
+   - 4.17 [Use the Patch API for atomic counter increments](#417-use-the-patch-api-for-atomic-counter-increments)
+   - 4.18 [Configure Preferred Regions for Availability](#418-configure-preferred-regions-for-availability)
+   - 4.19 [Include aiohttp When Using Python Async SDK](#419-include-aiohttp-when-using-python-async-sdk)
+   - 4.20 [Never share a single CosmosItemRequestOptions instance across multiple createItem calls](#420-never-share-a-single-cosmositemrequestoptions-instance-across-multiple-createitem-calls)
+   - 4.21 [Handle 429 Errors with Retry-After](#421-handle-429-errors-with-retry-after)
+   - 4.22 [Use consistent enum serialization between Cosmos SDK and application layer](#422-use-consistent-enum-serialization-between-cosmos-sdk-and-application-layer)
+   - 4.23 [Reuse CosmosClient as Singleton](#423-reuse-cosmosclient-as-singleton)
+   - 4.24 [Annotate entities for Spring Data Cosmos with @Container, @PartitionKey, and String IDs](#424-annotate-entities-for-spring-data-cosmos-with-container-partitionkey-and-string-ids)
+   - 4.25 [Use CosmosRepository correctly and handle Iterable return types](#425-use-cosmosrepository-correctly-and-handle-iterable-return-types)
 5. [Indexing Strategies](#5-indexing-strategies) — **MEDIUM-HIGH**
    - 5.1 [Composite Index Directions Must Match ORDER BY](#51-composite-index-directions-must-match-order-by)
    - 5.2 [Use Composite Indexes for ORDER BY](#52-use-composite-indexes-for-order-by)
@@ -4913,7 +4914,136 @@ References:
 - [`CosmosAsyncClient.createDatabaseIfNotExists()` Javadoc](https://learn.microsoft.com/java/api/com.azure.cosmos.cosmosasyncclient?view=azure-java-stable)
 - [`AbstractCosmosConfiguration` Javadoc](https://learn.microsoft.com/java/api/com.azure.spring.data.cosmos.config.abstractcosmosconfiguration?view=azure-java-stable)
 
-### 4.13 Spring Boot and Java version compatibility for Cosmos DB SDK
+### 4.13 Eagerly warm up Cosmos DB connection in background thread when using lazy initialization
+
+**Impact: HIGH** (prevents first-request timeouts caused by deferred database and container creation)
+
+## Eagerly Warm Up Cosmos DB Connection When Using Lazy Initialization
+
+When using lazy initialization for `CosmosClient` (common when the Cosmos DB Emulator's SSL certificate is not yet available at Spring Bean creation time), the first API request triggers database and container creation, which can take 10–30+ seconds and cause request timeouts.
+
+To avoid this, start a daemon background thread in `@PostConstruct` that eagerly calls the lazy initializer. The thread runs in parallel with application startup, so the connection is typically ready before the first real request arrives.
+
+### Why
+
+- `CosmosClient.buildClient()` performs initial metadata discovery
+- `createDatabaseIfNotExists()` and `createContainerIfNotExists()` are slow operations on first run (especially against the emulator)
+- Combined, these can exceed HTTP request timeouts (e.g., 30-second pytest timeout in CI)
+- Warming up in a background thread lets the app respond to health checks immediately while the Cosmos DB connection initializes
+
+### How
+
+Use `@PostConstruct` to start a daemon thread that calls `getContainer()`:
+
+```java
+@Component
+public class CosmosDbConfig {
+
+    private volatile CosmosClient cosmosClient;
+    private volatile CosmosContainer container;
+
+    @PostConstruct
+    public void warmup() {
+        Thread warmupThread = new Thread(() -> {
+            try {
+                logger.info("Starting Cosmos DB warmup in background...");
+                getContainer();
+                logger.info("Cosmos DB warmup completed");
+            } catch (Exception e) {
+                logger.warn("Cosmos DB warmup failed (will retry on first request): {}",
+                    e.getMessage());
+            }
+        }, "cosmos-warmup");
+        warmupThread.setDaemon(true);
+        warmupThread.start();
+    }
+
+    public synchronized CosmosContainer getContainer() {
+        if (container != null) {
+            return container;
+        }
+        // Build client, create database/container with retry loop
+        // ...
+        return container;
+    }
+}
+```
+
+### Example (Bad)
+
+```java
+// ❌ No warmup — first API request blocks for 10–30+ seconds
+@Component
+public class CosmosDbConfig {
+
+    private volatile CosmosContainer container;
+
+    // No @PostConstruct warmup — container is null until first request
+    public synchronized CosmosContainer getContainer() {
+        if (container != null) return container;
+        // Slow initialization happens here during the first HTTP request
+        cosmosClient = new CosmosClientBuilder()...buildClient();
+        cosmosClient.createDatabaseIfNotExists(dbName);
+        // ... createContainerIfNotExists ...
+        container = database.getContainer(containerName);
+        return container;
+    }
+}
+// First request to POST /api/tenants takes 20+ seconds → test timeout
+```
+
+### Example (Good)
+
+```java
+// ✅ Background warmup — connection ready before first request
+@Component
+public class CosmosDbConfig {
+
+    private volatile CosmosContainer container;
+
+    @PostConstruct
+    public void warmup() {
+        Thread t = new Thread(() -> {
+            try { getContainer(); }
+            catch (Exception e) { /* will retry on first request */ }
+        }, "cosmos-warmup");
+        t.setDaemon(true);
+        t.start();
+    }
+
+    public synchronized CosmosContainer getContainer() {
+        if (container != null) return container;
+        // Initialization with retry loop
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                cosmosClient = new CosmosClientBuilder()...buildClient();
+                cosmosClient.createDatabaseIfNotExists(dbName);
+                container = database.getContainer(containerName);
+                return container;
+            } catch (Exception e) {
+                Thread.sleep(INITIAL_BACKOFF_MS * (1L << (attempt - 1)));
+            }
+        }
+        throw new RuntimeException("Failed to initialize Cosmos DB");
+    }
+}
+// Background thread starts immediately after Spring context loads
+// By the time tests or real requests arrive, container is ready
+```
+
+### Key Points
+
+- Use short initial backoff (500ms) and low max backoff (10s) in the retry loop to avoid slow convergence
+- Mark the warmup thread as daemon so it doesn't prevent JVM shutdown
+- The `synchronized` keyword on `getContainer()` ensures thread safety between the warmup thread and API request threads
+- If warmup fails, the first API request will trigger a retry — no data is lost
+- This pattern is especially important in CI environments where test frameworks impose per-test timeouts
+
+## References
+
+- [Best practices for Azure Cosmos DB Java SDK](https://learn.microsoft.com/azure/cosmos-db/nosql/best-practice-java)
+
+### 4.14 Spring Boot and Java version compatibility for Cosmos DB SDK
 
 **Impact: CRITICAL** (Prevents build failures due to version incompatibility between Spring Boot and Java)
 
@@ -5044,7 +5174,7 @@ export PATH=$JAVA_HOME/bin:$PATH
 - [Spring Boot 2.7.x System Requirements](https://docs.spring.io/spring-boot/docs/2.7.x/reference/html/getting-started.html#getting-started-system-requirements)
 - [Azure Cosmos DB Java SDK](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/sdk-java-v4)
 
-### 4.14 Configure local development environment to avoid cloud connection conflicts
+### 4.15 Configure local development environment to avoid cloud connection conflicts
 
 **Impact: MEDIUM** (prevents accidental connections to production instead of emulator)
 
@@ -5215,7 +5345,7 @@ azure:
 
 Reference: [Azure Cosmos DB Emulator](https://learn.microsoft.com/azure/cosmos-db/emulator)
 
-### 4.15 Explicitly reference Newtonsoft.Json package
+### 4.16 Explicitly reference Newtonsoft.Json package
 
 **Impact: MEDIUM** (Prevents build failures and security vulnerabilities from missing or outdated Newtonsoft.Json dependency)
 
@@ -5317,7 +5447,7 @@ Solution:
 
 Reference: [Managing Newtonsoft.Json Dependencies](https://learn.microsoft.com/en-us/azure/cosmos-db/performance-tips-dotnet-sdk-v3?tabs=trace-net-core#managing-newtonsoftjson-dependencies)
 
-### 4.16 Use the Patch API for atomic counter increments
+### 4.17 Use the Patch API for atomic counter increments
 
 **Impact: HIGH** (eliminates read-modify-write for counters; reduces RU cost and eliminates concurrency conflicts)
 
@@ -5388,7 +5518,7 @@ return container.patchItem(videoId, new PartitionKey(videoId), ops, Video.class)
 
 Reference: [Partial document update (Patch API)](https://learn.microsoft.com/azure/cosmos-db/partial-document-update)
 
-### 4.17 Configure Preferred Regions for Availability
+### 4.18 Configure Preferred Regions for Availability
 
 **Impact: HIGH** (enables automatic failover, reduces latency)
 
@@ -5484,7 +5614,7 @@ Best practices:
 
 Reference: [Configure preferred regions](https://learn.microsoft.com/azure/cosmos-db/nosql/tutorial-global-distribution)
 
-### 4.18 Include aiohttp When Using Python Async SDK
+### 4.19 Include aiohttp When Using Python Async SDK
 
 **Impact: HIGH** (prevents application startup failure)
 
@@ -5532,7 +5662,7 @@ from azure.cosmos import CosmosClient
 
 Reference: [Azure Cosmos DB Python SDK](https://learn.microsoft.com/en-us/azure/cosmos-db/nosql/sdk-python)
 
-### 4.19 Never share a single CosmosItemRequestOptions instance across multiple createItem calls
+### 4.20 Never share a single CosmosItemRequestOptions instance across multiple createItem calls
 
 **Impact: HIGH** (causes wrong partition key to be sent, producing silent data corruption or 400/404 errors)
 
@@ -5591,7 +5721,7 @@ usersContainer.createItem(
 
 Reference: [Java SDK createItem](https://learn.microsoft.com/azure/cosmos-db/nosql/how-to-java-get-started)
 
-### 4.20 Handle 429 Errors with Retry-After
+### 4.21 Handle 429 Errors with Retry-After
 
 **Impact: HIGH** (prevents cascading failures)
 
@@ -5708,7 +5838,7 @@ await Task.WhenAll(tasks);
 
 Reference: [Handle rate limiting](https://learn.microsoft.com/azure/cosmos-db/nosql/troubleshoot-request-rate-too-large)
 
-### 4.21 Use consistent enum serialization between Cosmos SDK and application layer
+### 4.22 Use consistent enum serialization between Cosmos SDK and application layer
 
 **Impact: critical** (undefined)
 
@@ -5805,7 +5935,7 @@ public class Order
 - Point reads work but filtered queries don't
 - API returns different enum format than stored in Cosmos DB
 
-### 4.22 Reuse CosmosClient as Singleton
+### 4.23 Reuse CosmosClient as Singleton
 
 **Impact: CRITICAL** (prevents connection exhaustion)
 
@@ -5926,7 +6056,7 @@ public class CosmosDbHostedService : IHostedService
 
 Reference: [CosmosClient best practices](https://learn.microsoft.com/azure/cosmos-db/nosql/best-practice-dotnet)
 
-### 4.23 Annotate entities for Spring Data Cosmos with @Container, @PartitionKey, and String IDs
+### 4.24 Annotate entities for Spring Data Cosmos with @Container, @PartitionKey, and String IDs
 
 **Impact: CRITICAL** (prevents startup failures and data access errors in Spring Data Cosmos applications)
 
@@ -6042,7 +6172,7 @@ Add `@JsonIgnoreProperties(ignoreUnknown = true)` to every Cosmos entity class s
 
 Reference: [Spring Data Azure Cosmos DB annotations](https://learn.microsoft.com/azure/cosmos-db/nosql/how-to-java-spring-data)
 
-### 4.24 Use CosmosRepository correctly and handle Iterable return types
+### 4.25 Use CosmosRepository correctly and handle Iterable return types
 
 **Impact: HIGH** (prevents ClassCastException and query failures in Spring Data Cosmos repositories)
 

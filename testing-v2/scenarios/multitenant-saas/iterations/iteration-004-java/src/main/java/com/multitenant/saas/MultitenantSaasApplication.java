@@ -3,6 +3,7 @@ package com.multitenant.saas;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
@@ -27,6 +28,7 @@ public class MultitenantSaasApplication {
             SSLContext sc = SSLContext.getInstance("TLS");
             sc.init(null, trustAll, new java.security.SecureRandom());
             SSLContext.setDefault(sc);
+            HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
         } catch (Exception e) {
             System.err.println("Warning: Could not set trust-all SSL context: " + e.getMessage());
         }
