@@ -1,18 +1,36 @@
 package com.multitenant.repository;
 
+import com.azure.cosmos.ConsistencyLevel;
+import com.azure.cosmos.CosmosClient;
+import com.azure.cosmos.CosmosClientBuilder;
 import com.azure.cosmos.CosmosContainer;
+import com.azure.cosmos.CosmosDatabase;
+import com.azure.cosmos.DirectConnectionConfig;
+import com.azure.cosmos.GatewayConnectionConfig;
+import com.azure.cosmos.models.CompositePath;
+import com.azure.cosmos.models.CompositePathSortOrder;
+import com.azure.cosmos.models.CosmosContainerProperties;
 import com.azure.cosmos.models.CosmosItemRequestOptions;
 import com.azure.cosmos.models.CosmosItemResponse;
 import com.azure.cosmos.models.CosmosQueryRequestOptions;
+import com.azure.cosmos.models.ExcludedPath;
+import com.azure.cosmos.models.IncludedPath;
+import com.azure.cosmos.models.IndexingPolicy;
 import com.azure.cosmos.models.PartitionKey;
 import com.azure.cosmos.models.PartitionKeyBuilder;
+import com.azure.cosmos.models.PartitionKeyDefinition;
+import com.azure.cosmos.models.PartitionKeyDefinitionVersion;
+import com.azure.cosmos.models.PartitionKind;
 import com.azure.cosmos.models.SqlParameter;
 import com.azure.cosmos.models.SqlQuerySpec;
+import com.azure.cosmos.models.ThroughputProperties;
 import com.azure.cosmos.util.CosmosPagedIterable;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.springframework.stereotype.Repository;
+import com.multitenant.config.CosmosConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -21,23 +39,144 @@ import java.util.Set;
 
 /**
  * Cosmos DB repository layer that enforces tenant isolation.
+ * Uses lazy initialization with retry for the CosmosClient to handle
+ * emulator startup delays and SSL certificate issues.
  * Uses parameterized queries (rule: query-parameterized) and
  * hierarchical partition keys (rule: partition-hierarchical).
  */
-@Repository
+@Component
 public class CosmosRepository {
 
-    private final CosmosContainer container;
+    private static final Logger logger = LoggerFactory.getLogger(CosmosRepository.class);
+    private static final int MAX_RETRIES = 10;
+    private static final String CONTAINER_NAME = "entities";
+
+    private final CosmosConfig cosmosConfig;
     private final ObjectMapper objectMapper;
+
+    private volatile CosmosClient cosmosClient;
+    private volatile CosmosContainer container;
 
     private static final Set<String> ALLOWED_FIELDS = Set.of(
             "projectId", "userId", "taskId", "tenantId", "assigneeId",
             "status", "priority", "role", "plan", "name", "email", "title"
     );
 
-    public CosmosRepository(CosmosContainer container) {
-        this.container = container;
+    public CosmosRepository(CosmosConfig cosmosConfig) {
+        this.cosmosConfig = cosmosConfig;
         this.objectMapper = new ObjectMapper();
+    }
+
+    /**
+     * Lazy-initialize CosmosClient, database, and container with retry.
+     * Synchronized double-checked locking ensures singleton semantics.
+     */
+    private CosmosContainer getContainer() {
+        if (container == null) {
+            synchronized (this) {
+                if (container == null) {
+                    Exception lastException = null;
+                    for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+                        try {
+                            logger.info("Initializing Cosmos DB (attempt {}/{})", attempt, MAX_RETRIES);
+
+                            // Build client with adaptive connection mode
+                            String endpoint = cosmosConfig.getEndpoint();
+                            CosmosClientBuilder builder = new CosmosClientBuilder()
+                                    .endpoint(endpoint)
+                                    .key(cosmosConfig.getKey())
+                                    .consistencyLevel(ConsistencyLevel.SESSION)
+                                    .contentResponseOnWriteEnabled(true);
+
+                            boolean isEmulator = endpoint.contains("localhost") || endpoint.contains("127.0.0.1");
+                            if (isEmulator) {
+                                logger.info("Using Gateway mode for Cosmos DB Emulator");
+                                builder.gatewayMode(new GatewayConnectionConfig());
+                            } else {
+                                logger.info("Using Direct mode for production Cosmos DB");
+                                builder.directMode(DirectConnectionConfig.getDefaultConfig());
+                            }
+
+                            cosmosClient = builder.buildClient();
+
+                            // Create database with autoscale throughput
+                            cosmosClient.createDatabaseIfNotExists(
+                                    cosmosConfig.getDatabaseName(),
+                                    ThroughputProperties.createAutoscaledThroughput(4000));
+                            CosmosDatabase database = cosmosClient.getDatabase(cosmosConfig.getDatabaseName());
+
+                            // Create container with hierarchical partition key
+                            PartitionKeyDefinition pkDef = new PartitionKeyDefinition();
+                            pkDef.setPaths(Arrays.asList("/tenantId", "/type"));
+                            pkDef.setKind(PartitionKind.MULTI_HASH);
+                            pkDef.setVersion(PartitionKeyDefinitionVersion.V2);
+
+                            CosmosContainerProperties containerProps =
+                                    new CosmosContainerProperties(CONTAINER_NAME, pkDef);
+
+                            // Custom indexing policy
+                            IndexingPolicy indexingPolicy = new IndexingPolicy();
+                            indexingPolicy.setAutomatic(true);
+
+                            List<IncludedPath> includedPaths = new ArrayList<>();
+                            includedPaths.add(new IncludedPath("/*"));
+                            indexingPolicy.setIncludedPaths(includedPaths);
+
+                            List<ExcludedPath> excludedPaths = new ArrayList<>();
+                            excludedPaths.add(new ExcludedPath("/\"_etag\"/?"));
+                            excludedPaths.add(new ExcludedPath("/description/?"));
+                            excludedPaths.add(new ExcludedPath("/email/?"));
+                            indexingPolicy.setExcludedPaths(excludedPaths);
+
+                            // Composite indexes
+                            List<List<CompositePath>> compositeIndexes = new ArrayList<>();
+
+                            List<CompositePath> statusPriority = new ArrayList<>();
+                            statusPriority.add(new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING));
+                            statusPriority.add(new CompositePath().setPath("/priority").setOrder(CompositePathSortOrder.ASCENDING));
+                            compositeIndexes.add(statusPriority);
+
+                            List<CompositePath> assigneeStatus = new ArrayList<>();
+                            assigneeStatus.add(new CompositePath().setPath("/assigneeId").setOrder(CompositePathSortOrder.ASCENDING));
+                            assigneeStatus.add(new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING));
+                            compositeIndexes.add(assigneeStatus);
+
+                            List<CompositePath> typeCreated = new ArrayList<>();
+                            typeCreated.add(new CompositePath().setPath("/type").setOrder(CompositePathSortOrder.ASCENDING));
+                            typeCreated.add(new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING));
+                            compositeIndexes.add(typeCreated);
+
+                            indexingPolicy.setCompositeIndexes(compositeIndexes);
+                            containerProps.setIndexingPolicy(indexingPolicy);
+
+                            database.createContainerIfNotExists(containerProps);
+                            container = database.getContainer(CONTAINER_NAME);
+
+                            logger.info("Cosmos DB initialized successfully");
+                            return container;
+                        } catch (Exception e) {
+                            lastException = e;
+                            logger.warn("Cosmos DB init attempt {}/{} failed: {}", attempt, MAX_RETRIES, e.getMessage());
+                            if (cosmosClient != null) {
+                                try { cosmosClient.close(); } catch (Exception ignored) {}
+                                cosmosClient = null;
+                            }
+                            if (attempt < MAX_RETRIES) {
+                                try {
+                                    long backoff = (long) Math.pow(2, attempt) * 1000;
+                                    Thread.sleep(backoff);
+                                } catch (InterruptedException ie) {
+                                    Thread.currentThread().interrupt();
+                                    throw new RuntimeException("Interrupted during Cosmos DB init retry", ie);
+                                }
+                            }
+                        }
+                    }
+                    throw new RuntimeException("Failed to initialize Cosmos DB after " + MAX_RETRIES + " attempts", lastException);
+                }
+            }
+        }
+        return container;
     }
 
     /**
@@ -51,7 +190,7 @@ public class CosmosRepository {
                 .add(type)
                 .build();
 
-        CosmosItemResponse<JsonNode> response = container.createItem(
+        CosmosItemResponse<JsonNode> response = getContainer().createItem(
                 item, partitionKey, new CosmosItemRequestOptions());
         return response.getItem();
     }
@@ -65,7 +204,7 @@ public class CosmosRepository {
                 .add(tenantId)
                 .add(type)
                 .build();
-        CosmosItemResponse<JsonNode> response = container.readItem(
+        CosmosItemResponse<JsonNode> response = getContainer().readItem(
                 id, partitionKey, JsonNode.class);
         return response.getItem();
     }
@@ -87,7 +226,7 @@ public class CosmosRepository {
                 .add(tenantId)
                 .add(type)
                 .build());
-        CosmosPagedIterable<JsonNode> results = container.queryItems(
+        CosmosPagedIterable<JsonNode> results = getContainer().queryItems(
                 querySpec, options, JsonNode.class);
         List<JsonNode> items = new ArrayList<>();
         results.forEach(items::add);
@@ -115,7 +254,7 @@ public class CosmosRepository {
                 .add(tenantId)
                 .add(type)
                 .build());
-        CosmosPagedIterable<JsonNode> results = container.queryItems(
+        CosmosPagedIterable<JsonNode> results = getContainer().queryItems(
                 querySpec, options, JsonNode.class);
         List<JsonNode> items = new ArrayList<>();
         results.forEach(items::add);
@@ -139,7 +278,7 @@ public class CosmosRepository {
                 .add(tenantId)
                 .add("task")
                 .build());
-        CosmosPagedIterable<JsonNode> results = container.queryItems(
+        CosmosPagedIterable<JsonNode> results = getContainer().queryItems(
                 querySpec, options, JsonNode.class);
         List<JsonNode> items = new ArrayList<>();
         results.forEach(items::add);
@@ -163,7 +302,7 @@ public class CosmosRepository {
                 .add(tenantId)
                 .add("task")
                 .build());
-        CosmosPagedIterable<JsonNode> results = container.queryItems(
+        CosmosPagedIterable<JsonNode> results = getContainer().queryItems(
                 querySpec, options, JsonNode.class);
         List<JsonNode> items = new ArrayList<>();
         results.forEach(items::add);
@@ -187,7 +326,7 @@ public class CosmosRepository {
                 .add(tenantId)
                 .add("task")
                 .build());
-        CosmosPagedIterable<JsonNode> results = container.queryItems(
+        CosmosPagedIterable<JsonNode> results = getContainer().queryItems(
                 querySpec, options, JsonNode.class);
         List<JsonNode> items = new ArrayList<>();
         results.forEach(items::add);
@@ -215,7 +354,7 @@ public class CosmosRepository {
                 .add(tenantId)
                 .add(type)
                 .build());
-        CosmosPagedIterable<Integer> results = container.queryItems(
+        CosmosPagedIterable<Integer> results = getContainer().queryItems(
                 querySpec, options, Integer.class);
         List<Integer> counts = new ArrayList<>();
         results.forEach(counts::add);
@@ -239,7 +378,7 @@ public class CosmosRepository {
                 .add(tenantId)
                 .add(type)
                 .build());
-        CosmosPagedIterable<Integer> results = container.queryItems(
+        CosmosPagedIterable<Integer> results = getContainer().queryItems(
                 querySpec, options, Integer.class);
         List<Integer> counts = new ArrayList<>();
         results.forEach(counts::add);

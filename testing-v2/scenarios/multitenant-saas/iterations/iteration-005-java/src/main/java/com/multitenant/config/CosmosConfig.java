@@ -1,46 +1,15 @@
 package com.multitenant.config;
 
-import com.azure.cosmos.ConsistencyLevel;
-import com.azure.cosmos.CosmosClient;
-import com.azure.cosmos.CosmosClientBuilder;
-import com.azure.cosmos.CosmosContainer;
-import com.azure.cosmos.CosmosDatabase;
-import com.azure.cosmos.DirectConnectionConfig;
-import com.azure.cosmos.GatewayConnectionConfig;
-import com.azure.cosmos.models.CosmosContainerProperties;
-import com.azure.cosmos.models.CosmosContainerResponse;
-import com.azure.cosmos.models.CosmosDatabaseResponse;
-import com.azure.cosmos.models.CompositePath;
-import com.azure.cosmos.models.CompositePathSortOrder;
-import com.azure.cosmos.models.ExcludedPath;
-import com.azure.cosmos.models.IncludedPath;
-import com.azure.cosmos.models.IndexingPolicy;
-import com.azure.cosmos.models.PartitionKeyDefinition;
-import com.azure.cosmos.models.PartitionKeyDefinitionVersion;
-import com.azure.cosmos.models.PartitionKind;
-import com.azure.cosmos.models.ThroughputProperties;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 /**
- * Cosmos DB configuration following best practices:
- * - Singleton CosmosClient (rule: sdk-singleton)
- * - Adaptive connection mode: Gateway for emulator, Direct for production (rules: sdk-direct-mode, sdk-gateway-emulator)
- * - Hierarchical partition keys /tenantId + /type (rule: partition-hierarchical)
- * - Custom indexing policy with composite indexes (rule: index-composite)
- * - Excluded unused paths (rule: index-exclude-unused)
+ * Cosmos DB configuration holder — stores connection properties only.
+ * CosmosClient is created lazily in the repository to avoid startup failures
+ * when the emulator isn't ready or SSL certs aren't trusted yet.
  */
 @Configuration
 public class CosmosConfig {
-
-    private static final Logger logger = LoggerFactory.getLogger(CosmosConfig.class);
 
     @Value("${cosmos.endpoint}")
     private String endpoint;
@@ -51,89 +20,15 @@ public class CosmosConfig {
     @Value("${cosmos.database}")
     private String databaseName;
 
-    @Bean
-    public CosmosClient cosmosClient() {
-        CosmosClientBuilder builder = new CosmosClientBuilder()
-                .endpoint(endpoint)
-                .key(key)
-                .consistencyLevel(ConsistencyLevel.SESSION)
-                .contentResponseOnWriteEnabled(true);
-
-        // Rule: Use Gateway mode for emulator (Direct mode has SSL issues),
-        // Direct mode for production
-        boolean isEmulator = endpoint.contains("localhost") || endpoint.contains("127.0.0.1");
-        if (isEmulator) {
-            logger.info("Using Gateway mode for Cosmos DB Emulator");
-            builder.gatewayMode(new GatewayConnectionConfig());
-        } else {
-            logger.info("Using Direct mode for production Cosmos DB");
-            builder.directMode(DirectConnectionConfig.getDefaultConfig());
-        }
-
-        return builder.buildClient();
+    public String getEndpoint() {
+        return endpoint;
     }
 
-    @Bean
-    public CosmosDatabase cosmosDatabase(CosmosClient cosmosClient) {
-        CosmosDatabaseResponse response = cosmosClient.createDatabaseIfNotExists(
-                databaseName,
-                ThroughputProperties.createAutoscaledThroughput(4000)
-        );
-        return cosmosClient.getDatabase(databaseName);
+    public String getKey() {
+        return key;
     }
 
-    @Bean
-    public CosmosContainer cosmosContainer(CosmosDatabase cosmosDatabase) {
-        // Hierarchical partition key: /tenantId + /type
-        PartitionKeyDefinition partitionKeyDef = new PartitionKeyDefinition();
-        partitionKeyDef.setPaths(Arrays.asList("/tenantId", "/type"));
-        partitionKeyDef.setKind(PartitionKind.MULTI_HASH);
-        partitionKeyDef.setVersion(PartitionKeyDefinitionVersion.V2);
-
-        CosmosContainerProperties containerProperties =
-                new CosmosContainerProperties("entities", partitionKeyDef);
-
-        // Custom indexing policy
-        IndexingPolicy indexingPolicy = new IndexingPolicy();
-        indexingPolicy.setAutomatic(true);
-
-        // Include root path
-        List<IncludedPath> includedPaths = new ArrayList<>();
-        includedPaths.add(new IncludedPath("/*"));
-        indexingPolicy.setIncludedPaths(includedPaths);
-
-        // Exclude unused paths to save RU on writes
-        List<ExcludedPath> excludedPaths = new ArrayList<>();
-        excludedPaths.add(new ExcludedPath("/\"_etag\"/?"));
-        excludedPaths.add(new ExcludedPath("/description/?"));
-        excludedPaths.add(new ExcludedPath("/email/?"));
-        indexingPolicy.setExcludedPaths(excludedPaths);
-
-        // Composite indexes for common query patterns
-        List<List<CompositePath>> compositeIndexes = new ArrayList<>();
-
-        // Composite index for tasks by status + priority queries
-        List<CompositePath> statusPriorityIndex = new ArrayList<>();
-        statusPriorityIndex.add(new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING));
-        statusPriorityIndex.add(new CompositePath().setPath("/priority").setOrder(CompositePathSortOrder.ASCENDING));
-        compositeIndexes.add(statusPriorityIndex);
-
-        // Composite index for tasks by assigneeId + status
-        List<CompositePath> assigneeStatusIndex = new ArrayList<>();
-        assigneeStatusIndex.add(new CompositePath().setPath("/assigneeId").setOrder(CompositePathSortOrder.ASCENDING));
-        assigneeStatusIndex.add(new CompositePath().setPath("/status").setOrder(CompositePathSortOrder.ASCENDING));
-        compositeIndexes.add(assigneeStatusIndex);
-
-        // Composite index for createdAt ordering with type
-        List<CompositePath> typeCreatedIndex = new ArrayList<>();
-        typeCreatedIndex.add(new CompositePath().setPath("/type").setOrder(CompositePathSortOrder.ASCENDING));
-        typeCreatedIndex.add(new CompositePath().setPath("/createdAt").setOrder(CompositePathSortOrder.DESCENDING));
-        compositeIndexes.add(typeCreatedIndex);
-
-        indexingPolicy.setCompositeIndexes(compositeIndexes);
-        containerProperties.setIndexingPolicy(indexingPolicy);
-
-        cosmosDatabase.createContainerIfNotExists(containerProperties);
-        return cosmosDatabase.getContainer("entities");
+    public String getDatabaseName() {
+        return databaseName;
     }
 }
