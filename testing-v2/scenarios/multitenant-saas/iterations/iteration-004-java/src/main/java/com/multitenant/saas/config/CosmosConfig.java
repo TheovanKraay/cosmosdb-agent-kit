@@ -47,7 +47,8 @@ public class CosmosConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(CosmosConfig.class);
     private static final int MAX_RETRIES = 10;
-    private static final long INITIAL_BACKOFF_MS = 500;
+    private static final long INITIAL_BACKOFF_MS = 500;  // Short initial backoff for fast convergence in CI
+    private static final long MAX_BACKOFF_MS = 10000;    // Cap retry wait to avoid exceeding test timeouts
 
     @Value("${azure.cosmos.endpoint}")
     private String endpoint;
@@ -162,7 +163,7 @@ public class CosmosConfig {
                 if (attempt < MAX_RETRIES) {
                     try {
                         long backoff = INITIAL_BACKOFF_MS * (1L << (attempt - 1));
-                        Thread.sleep(Math.min(backoff, 10000));
+                        Thread.sleep(Math.min(backoff, MAX_BACKOFF_MS));
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
                         throw new RuntimeException("Interrupted during Cosmos DB initialization", ie);
