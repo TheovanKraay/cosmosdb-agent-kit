@@ -62,7 +62,7 @@ Performance optimization and best practices guide for Azure Cosmos DB applicatio
    - 4.10 [Configure Excluded Regions for Dynamic Failover](#410-configure-excluded-regions-for-dynamic-failover)
    - 4.11 [Unwrap CosmosItemResponse and enable content response in Java SDK](#411-unwrap-cosmositemresponse-and-enable-content-response-in-java-sdk)
    - 4.12 [Use dependent @Bean methods for Cosmos DB initialization in Spring Boot](#412-use-dependent-bean-methods-for-cosmos-db-initialization-in-spring-boot)
-   - 4.13 [Eagerly warm up Cosmos DB connection in background thread when using lazy initialization](#413-eagerly-warm-up-cosmos-db-connection-in-background-thread-when-using-lazy-initialization)
+   - 4.13 [Eagerly warm up Cosmos DB connection and gate health endpoint on readiness](#413-eagerly-warm-up-cosmos-db-connection-and-gate-health-endpoint-on-readiness)
    - 4.14 [Spring Boot and Java version compatibility for Cosmos DB SDK](#414-spring-boot-and-java-version-compatibility-for-cosmos-db-sdk)
    - 4.15 [Configure local development environment to avoid cloud connection conflicts](#415-configure-local-development-environment-to-avoid-cloud-connection-conflicts)
    - 4.16 [Explicitly reference Newtonsoft.Json package](#416-explicitly-reference-newtonsoft-json-package)
@@ -4914,26 +4914,32 @@ References:
 - [`CosmosAsyncClient.createDatabaseIfNotExists()` Javadoc](https://learn.microsoft.com/java/api/com.azure.cosmos.cosmosasyncclient?view=azure-java-stable)
 - [`AbstractCosmosConfiguration` Javadoc](https://learn.microsoft.com/java/api/com.azure.spring.data.cosmos.config.abstractcosmosconfiguration?view=azure-java-stable)
 
-### 4.13 Eagerly warm up Cosmos DB connection in background thread when using lazy initialization
+### 4.13 Eagerly warm up Cosmos DB connection and gate health endpoint on readiness
 
 **Impact: HIGH** (prevents first-request timeouts caused by deferred database and container creation)
 
-## Eagerly Warm Up Cosmos DB Connection When Using Lazy Initialization
+## Eagerly Warm Up Cosmos DB Connection and Gate Health on Readiness
 
 When using lazy initialization for `CosmosClient` (common when the Cosmos DB Emulator's SSL certificate is not yet available at Spring Bean creation time), the first API request triggers database and container creation, which can take 10–30+ seconds and cause request timeouts.
 
-To avoid this, start a daemon background thread in `@PostConstruct` that eagerly calls the lazy initializer. The thread runs in parallel with application startup, so the connection is typically ready before the first real request arrives.
+To avoid this:
+1. Start a daemon background thread in `@PostConstruct` that eagerly calls the lazy initializer
+2. Track a `ready` flag that is set to `true` only after the warmup completes successfully
+3. Make the health endpoint return **503 Service Unavailable** until the warmup completes (returns 200 only when `isReady()` is true)
+
+This ensures that any external system (test harness, load balancer, Kubernetes readiness probe) that waits for health=200 will not send requests until Cosmos DB is fully initialized.
 
 ### Why
 
 - `CosmosClient.buildClient()` performs initial metadata discovery
 - `createDatabaseIfNotExists()` and `createContainerIfNotExists()` are slow operations on first run (especially against the emulator)
 - Combined, these can exceed HTTP request timeouts (e.g., 30-second pytest timeout in CI)
-- Warming up in a background thread lets the app respond to health checks immediately while the Cosmos DB connection initializes
+- A background warmup alone is not sufficient — if health returns 200 immediately, test harnesses or load balancers may send requests before warmup completes
+- Gating health on readiness guarantees the first real request never blocks on initialization
 
 ### How
 
-Use `@PostConstruct` to start a daemon thread that calls `getContainer()`:
+Use `@PostConstruct` to start a daemon thread that calls `getContainer()`, and expose an `isReady()` method for the health endpoint:
 
 ```java
 @Component
@@ -4941,6 +4947,7 @@ public class CosmosDbConfig {
 
     private volatile CosmosClient cosmosClient;
     private volatile CosmosContainer container;
+    private volatile boolean ready = false;
 
     @PostConstruct
     public void warmup() {
@@ -4948,6 +4955,7 @@ public class CosmosDbConfig {
             try {
                 logger.info("Starting Cosmos DB warmup in background...");
                 getContainer();
+                ready = true;
                 logger.info("Cosmos DB warmup completed");
             } catch (Exception e) {
                 logger.warn("Cosmos DB warmup failed (will retry on first request): {}",
@@ -4956,6 +4964,10 @@ public class CosmosDbConfig {
         }, "cosmos-warmup");
         warmupThread.setDaemon(true);
         warmupThread.start();
+    }
+
+    public boolean isReady() {
+        return ready;
     }
 
     public synchronized CosmosContainer getContainer() {
@@ -4969,66 +4981,99 @@ public class CosmosDbConfig {
 }
 ```
 
+```java
+@RestController
+public class HealthController {
+
+    private final CosmosDbConfig cosmosConfig;
+
+    public HealthController(CosmosDbConfig cosmosConfig) {
+        this.cosmosConfig = cosmosConfig;
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        if (!cosmosConfig.isReady()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("status", "initializing"));
+        }
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+}
+```
+
 ### Example (Bad)
 
 ```java
-// ❌ No warmup — first API request blocks for 10–30+ seconds
-@Component
-public class CosmosDbConfig {
-
-    private volatile CosmosContainer container;
-
-    // No @PostConstruct warmup — container is null until first request
-    public synchronized CosmosContainer getContainer() {
-        if (container != null) return container;
-        // Slow initialization happens here during the first HTTP request
-        cosmosClient = new CosmosClientBuilder()...buildClient();
-        cosmosClient.createDatabaseIfNotExists(dbName);
-        // ... createContainerIfNotExists ...
-        container = database.getContainer(containerName);
-        return container;
+// ❌ Health returns 200 immediately — tests start before Cosmos DB is ready
+@RestController
+public class HealthController {
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        return ResponseEntity.ok(Map.of("status", "ok")); // Always 200!
     }
 }
-// First request to POST /api/tenants takes 20+ seconds → test timeout
+
+@Component
+public class CosmosDbConfig {
+    @PostConstruct
+    public void warmup() {
+        new Thread(() -> getContainer()).start(); // Background warmup
+    }
+}
+// Problem: Health returns 200 while warmup is still running.
+// Test harness sees health=200, starts tests, first POST times out at 30s.
 ```
 
 ### Example (Good)
 
 ```java
-// ✅ Background warmup — connection ready before first request
+// ✅ Health gates on Cosmos DB readiness — tests wait until initialization is done
 @Component
 public class CosmosDbConfig {
-
-    private volatile CosmosContainer container;
+    private volatile boolean ready = false;
 
     @PostConstruct
     public void warmup() {
         Thread t = new Thread(() -> {
-            try { getContainer(); }
-            catch (Exception e) { /* will retry on first request */ }
+            try {
+                getContainer();
+                ready = true; // Only set after successful init
+            } catch (Exception e) { /* will retry on first request */ }
         }, "cosmos-warmup");
         t.setDaemon(true);
         t.start();
     }
 
+    public boolean isReady() { return ready; }
+
     public synchronized CosmosContainer getContainer() {
         if (container != null) return container;
-        // Initialization with retry loop
-        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try {
-                cosmosClient = new CosmosClientBuilder()...buildClient();
-                cosmosClient.createDatabaseIfNotExists(dbName);
-                container = database.getContainer(containerName);
-                return container;
-            } catch (Exception e) {
-                Thread.sleep(INITIAL_BACKOFF_MS * (1L << (attempt - 1)));
-            }
-        }
-        throw new RuntimeException("Failed to initialize Cosmos DB");
+        // Initialization with retry loop...
+        return container;
     }
 }
-// Background thread starts immediately after Spring context loads
-// By the time tests or real requests arrive, container is ready
+
+@RestController
+public class HealthController {
+    private final CosmosDbConfig cosmosConfig;
+
+    public HealthController(CosmosDbConfig cosmosConfig) {
+        this.cosmosConfig = cosmosConfig;
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<Map<String, String>> health() {
+        if (!cosmosConfig.isReady()) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("status", "initializing"));
+        }
+        return ResponseEntity.ok(Map.of("status", "ok"));
+    }
+}
+// Test harness polls health every 2s for up to 120s.
+// Health returns 503 until Cosmos DB is ready, then 200.
+// First test POST succeeds immediately — no timeout.
 ```
 
 ### Key Points
@@ -5036,8 +5081,9 @@ public class CosmosDbConfig {
 - Use short initial backoff (500ms) and low max backoff (10s) in the retry loop to avoid slow convergence
 - Mark the warmup thread as daemon so it doesn't prevent JVM shutdown
 - The `synchronized` keyword on `getContainer()` ensures thread safety between the warmup thread and API request threads
+- Set `ready = true` **after** `getContainer()` succeeds, not before — this ensures health only returns 200 when Cosmos DB is truly ready
 - If warmup fails, the first API request will trigger a retry — no data is lost
-- This pattern is especially important in CI environments where test frameworks impose per-test timeouts
+- This pattern applies to any environment with readiness probes: CI test harnesses, Kubernetes, Azure App Service health checks, load balancers
 
 ## References
 

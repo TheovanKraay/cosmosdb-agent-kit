@@ -61,6 +61,7 @@ public class CosmosConfig {
 
     private volatile CosmosClient cosmosClient;
     private volatile CosmosContainer container;
+    private volatile boolean ready = false;
 
     @PostConstruct
     public void warmup() {
@@ -68,6 +69,7 @@ public class CosmosConfig {
             try {
                 logger.info("Starting Cosmos DB warmup in background...");
                 getContainer();
+                ready = true;
                 logger.info("Cosmos DB warmup completed successfully");
             } catch (Exception e) {
                 logger.warn("Cosmos DB warmup failed (will retry on first request): {}", e.getMessage());
@@ -75,6 +77,16 @@ public class CosmosConfig {
         }, "cosmos-warmup");
         warmupThread.setDaemon(true);
         warmupThread.start();
+    }
+
+    /**
+     * Returns true when the Cosmos DB container has been successfully initialized.
+     * Used by the health endpoint to delay returning 200 until the container is ready,
+     * so that the CI test harness (which waits for health=200 before running tests)
+     * doesn't start tests before Cosmos DB is available.
+     */
+    public boolean isReady() {
+        return ready;
     }
 
     public synchronized CosmosContainer getContainer() {
