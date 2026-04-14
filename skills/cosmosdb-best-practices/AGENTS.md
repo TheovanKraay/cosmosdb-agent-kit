@@ -4958,8 +4958,9 @@ public class CosmosDbConfig {
         try {
             URL url = new URL(endpoint);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            if (conn instanceof HttpsURLConnection) {
-                ((HttpsURLConnection) conn).setHostnameVerifier((h, s) -> true);
+            if (conn instanceof HttpsURLConnection && isEmulatorEndpoint()) {
+                ((HttpsURLConnection) conn).setHostnameVerifier((h, s) ->
+                        "localhost".equals(h) || "127.0.0.1".equals(h));
             }
             conn.setConnectTimeout(2000);
             conn.setReadTimeout(2000);
@@ -5081,8 +5082,10 @@ public class CosmosDbConfig {
         try {
             URL url = new URL(endpoint);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            if (conn instanceof HttpsURLConnection) {
-                ((HttpsURLConnection) conn).setHostnameVerifier((h, s) -> true);
+            if (conn instanceof HttpsURLConnection && isEmulatorEndpoint()) {
+                // Only bypass hostname verification for local emulator
+                ((HttpsURLConnection) conn).setHostnameVerifier((h, s) ->
+                        "localhost".equals(h) || "127.0.0.1".equals(h));
             }
             conn.setConnectTimeout(2000);
             conn.setReadTimeout(2000);
