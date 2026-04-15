@@ -179,10 +179,10 @@ public class CosmosConfig {
                 new IncludedPath("/orderId/?")
         ));
 
-        // Exclude unused paths to reduce write RU cost
+        // Exclude everything by default, then include only the queried paths above.
+        // The root path "/*" is mandatory — it must appear in either included or excluded paths.
         indexingPolicy.setExcludedPaths(Arrays.asList(
-                new ExcludedPath("/shippingAddress/?"),
-                new ExcludedPath("/items/*"),
+                new ExcludedPath("/*"),
                 new ExcludedPath("/\"_etag\"/?")
         ));
 
