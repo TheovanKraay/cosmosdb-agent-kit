@@ -194,7 +194,8 @@ public class OrderController {
             }
             // Round to avoid floating-point drift
             totalSpent = Math.round(totalSpent * 100.0) / 100.0;
-            double averageOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0;
+            double averageOrderValue = totalOrders > 0
+                ? Math.round((totalSpent / totalOrders) * 100.0) / 100.0 : 0;
 
             CustomerSummary summary = new CustomerSummary(
                 customerId, totalOrders, totalSpent, averageOrderValue);
