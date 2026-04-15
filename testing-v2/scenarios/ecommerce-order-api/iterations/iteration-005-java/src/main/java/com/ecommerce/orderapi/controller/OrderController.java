@@ -202,11 +202,12 @@ public class OrderController {
      * Valid status transitions:
      * pending → shipped
      * pending → cancelled
+     * pending → delivered
      * shipped → delivered
-     * All others are invalid.
+     * All others are invalid (delivered and cancelled are terminal states).
      */
     private boolean isValidTransition(String current, String next) {
-        if ("pending".equals(current) && ("shipped".equals(next) || "cancelled".equals(next))) {
+        if ("pending".equals(current) && ("shipped".equals(next) || "cancelled".equals(next) || "delivered".equals(next))) {
             return true;
         }
         if ("shipped".equals(current) && "delivered".equals(next)) {

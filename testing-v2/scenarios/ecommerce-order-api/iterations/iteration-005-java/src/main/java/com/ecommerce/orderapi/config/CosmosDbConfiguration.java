@@ -71,7 +71,11 @@ public class CosmosDbConfiguration {
         Thread warmupThread = new Thread(() -> {
             System.out.println("[Warmup] Starting Cosmos DB warmup...");
 
-            // Phase 1: Poll the endpoint until it responds with HTTP 200
+            // Phase 1: Poll the endpoint until it responds (any non-503 HTTP status).
+            // The emulator returns 401 for unauthenticated GET — that means it IS running.
+            // Only 503 and connection failures mean "still starting up".
+            // Fallback: proceed after 60s regardless.
+            long phase1Deadline = System.currentTimeMillis() + 60_000;
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     URL url = new URL(endpoint);
@@ -81,12 +85,17 @@ public class CosmosDbConfiguration {
                     conn.setReadTimeout(2000);
                     int code = conn.getResponseCode();
                     conn.disconnect();
-                    if (code == 200) {
-                        System.out.println("[Warmup] Emulator endpoint is ready (HTTP 200).");
+                    System.out.println("[Warmup] Phase 1: endpoint returned HTTP " + code);
+                    if (code != 503) {
+                        System.out.println("[Warmup] Emulator endpoint is reachable (HTTP " + code + ").");
                         break;
                     }
                 } catch (Exception e) {
-                    // Emulator not ready yet
+                    System.out.println("[Warmup] Phase 1: connection failed (" + e.getMessage() + ")");
+                }
+                if (System.currentTimeMillis() >= phase1Deadline) {
+                    System.out.println("[Warmup] Phase 1: 60s fallback timeout reached, proceeding to Phase 2.");
+                    break;
                 }
                 try { Thread.sleep(2000); } catch (InterruptedException ie) { return; }
             }
