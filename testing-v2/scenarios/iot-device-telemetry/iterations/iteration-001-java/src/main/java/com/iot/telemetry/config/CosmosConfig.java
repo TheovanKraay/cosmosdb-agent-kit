@@ -137,6 +137,8 @@ public class CosmosConfig {
                 // Trust all certs for emulator
                 if (conn instanceof javax.net.ssl.HttpsURLConnection) {
                     javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
+                    // Cosmos DB Emulator uses self-signed certificates — trust all certs for local dev only
+                    @SuppressWarnings({"java:S4830", "java:S5527"})
                     javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
                     sc.init(null, new javax.net.ssl.TrustManager[]{new javax.net.ssl.X509TrustManager() {
                         public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
@@ -199,7 +201,7 @@ public class CosmosConfig {
      *
      * Best Practices:
      * - Rule 5.1: Composite index for ORDER BY timestamp DESC queries
-     * - TTL enabled at container level, set per-document to 30 days
+     * - Container-level default TTL of 30 days (2592000 seconds) for automatic data expiration
      */
     private void createTelemetryContainer(CosmosAsyncDatabase database) {
         CosmosContainerProperties props = new CosmosContainerProperties("telemetry", "/deviceId");
