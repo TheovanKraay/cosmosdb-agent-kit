@@ -19,15 +19,25 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
- * Cosmos DB configuration with lazy initialization and background warmup.
- * Uses a daemon thread to initialize the connection without blocking startup,
- * allowing the health endpoint to gate on readiness.
+ * Cosmos DB configuration with lazy initialization and TWO-PHASE background warmup.
+ *
+ * Phase 1: Polls the Cosmos DB endpoint with lightweight HTTP GET every 2s until
+ *          it returns HTTP 200. This avoids wasting the 120s CI health check window
+ *          on SDK internal timeouts (~23s per failed buildClient() call when emulator
+ *          returns 503/10001).
+ *
+ * Phase 2: Only after the endpoint is reachable, calls buildClient() and
+ *          createDatabaseIfNotExists()/createContainerIfNotExists().
+ *
+ * Health endpoint gates on isReady() flag — returns 503 until container is initialized.
  */
 @Component
 public class CosmosDbConfiguration {
@@ -52,8 +62,7 @@ public class CosmosDbConfiguration {
 
     /**
      * Start background warmup thread to initialize Cosmos DB connection.
-     * This avoids blocking Spring startup and allows the health endpoint
-     * to report readiness only after the connection is established.
+     * Uses a daemon thread so the JVM can exit if Spring shuts down.
      */
     @PostConstruct
     public void warmup() {
@@ -66,9 +75,15 @@ public class CosmosDbConfiguration {
     private void initialize() {
         logger.info("Starting Cosmos DB initialization (endpoint: {})", endpoint);
 
+        // === PHASE 1: Wait for the endpoint to be reachable ===
+        // Poll with lightweight HTTP GET to avoid SDK internal timeouts (~23s each).
+        // The emulator can return 503/10001 for 60-120+ seconds during startup.
+        waitForEndpoint();
+
+        // === PHASE 2: Initialize SDK after endpoint is ready ===
         while (!Thread.currentThread().isInterrupted()) {
             try {
-                // Close any previous client attempt
+                // Close any previous client attempt for fresh state
                 if (cosmosClient != null) {
                     try { cosmosClient.close(); } catch (Exception e) { /* ignore */ }
                     cosmosClient = null;
@@ -133,13 +148,52 @@ public class CosmosDbConfiguration {
                 return;
 
             } catch (Exception e) {
-                logger.warn("Cosmos DB initialization failed, retrying in 2s: {}", e.getMessage());
+                logger.warn("Cosmos DB SDK initialization failed, retrying in 1s: {}", e.getMessage());
+                // Close failed client for fresh state on retry
+                if (cosmosClient != null) {
+                    try { cosmosClient.close(); } catch (Exception ex) { /* ignore */ }
+                    cosmosClient = null;
+                }
                 try {
-                    Thread.sleep(2000);
+                    Thread.sleep(1000);
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     return;
                 }
+            }
+        }
+    }
+
+    /**
+     * Phase 1: Poll the Cosmos DB endpoint with a lightweight HTTP GET every 2s
+     * until it returns HTTP 200. This is much faster than calling buildClient()
+     * which has ~23s internal timeouts when the emulator returns 503.
+     */
+    private void waitForEndpoint() {
+        while (!Thread.currentThread().isInterrupted()) {
+            try {
+                URL url = new URL(endpoint);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setConnectTimeout(2000);
+                conn.setReadTimeout(2000);
+                int status = conn.getResponseCode();
+                conn.disconnect();
+
+                if (status == 200) {
+                    logger.info("Cosmos DB endpoint is reachable (HTTP {})", status);
+                    return;
+                }
+                logger.info("Cosmos DB endpoint returned HTTP {}, waiting...", status);
+            } catch (Exception e) {
+                logger.info("Cosmos DB endpoint not ready: {}", e.getMessage());
+            }
+
+            try {
+                Thread.sleep(2000);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                return;
             }
         }
     }
