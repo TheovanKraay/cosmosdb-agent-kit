@@ -296,7 +296,7 @@ public class OrderController {
             return false;
         }
         return switch (from) {
-            case "pending" -> "shipped".equals(to) || "cancelled".equals(to);
+            case "pending" -> "shipped".equals(to) || "cancelled".equals(to) || "delivered".equals(to);
             case "shipped" -> "delivered".equals(to);
             default -> false;
         };

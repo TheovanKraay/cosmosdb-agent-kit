@@ -68,8 +68,11 @@ public class CosmosDbConfiguration {
     }
 
     private void warmup() {
-        // Phase 1: Poll emulator endpoint until it's reachable
+        // Phase 1: Poll emulator endpoint until it's reachable (any HTTP response)
         logger.info("Cosmos warmup Phase 1: polling endpoint {} ...", endpoint);
+        long phase1Start = System.currentTimeMillis();
+        long phase1Timeout = 60_000; // 60s max for Phase 1, then proceed anyway
+        boolean endpointReachable = false;
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 URL url = new URL(endpoint);
@@ -93,12 +96,18 @@ public class CosmosDbConfiguration {
                 }
                 int status = conn.getResponseCode();
                 conn.disconnect();
-                if (status == 200) {
-                    logger.info("Cosmos emulator endpoint is ready (HTTP {})", status);
-                    break;
-                }
+                // Accept any HTTP response as evidence the endpoint is reachable
+                logger.info("Cosmos endpoint responded with HTTP {}", status);
+                endpointReachable = true;
+                break;
             } catch (Exception e) {
-                logger.debug("Cosmos endpoint not ready yet: {}", e.getMessage());
+                logger.info("Cosmos endpoint not ready yet: {}", e.getMessage());
+            }
+            // Fallback: if Phase 1 exceeds timeout, proceed to Phase 2 anyway
+            if (System.currentTimeMillis() - phase1Start > phase1Timeout) {
+                logger.warn("Phase 1 timeout ({}ms), proceeding to Phase 2 without endpoint confirmation",
+                    phase1Timeout);
+                break;
             }
             try {
                 Thread.sleep(2000);
