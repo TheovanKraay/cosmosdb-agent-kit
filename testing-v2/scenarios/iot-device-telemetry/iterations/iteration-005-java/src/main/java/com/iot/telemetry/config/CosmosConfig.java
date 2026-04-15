@@ -83,6 +83,7 @@ public class CosmosConfig {
     private void pollEndpoint() {
         long startTime = System.currentTimeMillis();
         long fallbackTimeout = 60_000; // 60 seconds max
+        boolean isLocalEmulator = endpoint.contains("localhost") || endpoint.contains("127.0.0.1");
 
         while (System.currentTimeMillis() - startTime < fallbackTimeout) {
             try {
@@ -91,17 +92,16 @@ public class CosmosConfig {
                 conn.setReadTimeout(2000);
                 conn.setRequestMethod("GET");
 
-                // Accept ANY response from the server that isn't HTTPS redirect or SSL error
-                javax.net.ssl.HttpsURLConnection.setDefaultHostnameVerifier((hostname, session) -> true);
-                javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
-                sc.init(null, new javax.net.ssl.TrustManager[]{new javax.net.ssl.X509TrustManager() {
-                    public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
-                    public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
-                    public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
-                }}, new java.security.SecureRandom());
-                if (conn instanceof javax.net.ssl.HttpsURLConnection) {
+                // Only disable SSL verification for local emulator (self-signed cert)
+                if (isLocalEmulator && conn instanceof javax.net.ssl.HttpsURLConnection) {
+                    javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
+                    sc.init(null, new javax.net.ssl.TrustManager[]{new javax.net.ssl.X509TrustManager() {
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                    }}, new java.security.SecureRandom());
                     ((javax.net.ssl.HttpsURLConnection) conn).setSSLSocketFactory(sc.getSocketFactory());
-                    ((javax.net.ssl.HttpsURLConnection) conn).setHostnameVerifier((h, s) -> true);
+                    ((javax.net.ssl.HttpsURLConnection) conn).setHostnameVerifier((h, s) -> h.equals("localhost") || h.equals("127.0.0.1"));
                 }
 
                 int status = conn.getResponseCode();
@@ -213,7 +213,7 @@ public class CosmosConfig {
                 new ExcludedPath("/*")
         ));
 
-        // Composite index for ORDER BY deviceId, timestamp DESC (time-range queries)
+        // Composite index for efficient timestamp-based ordering within each device's partition
         List<CompositePath> compositePaths = new ArrayList<>();
         CompositePath pathDeviceId = new CompositePath();
         pathDeviceId.setPath("/deviceId");
