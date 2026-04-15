@@ -62,7 +62,9 @@ public class CosmosDbConfiguration {
     private void warmup() {
         logger.info("Starting Cosmos DB warmup...");
 
-        // Phase 1: Poll endpoint until it responds with HTTP 200
+        // Phase 1: Poll endpoint until it responds (any HTTP status means server is up)
+        // The emulator returns 401 for unauthenticated requests — that's fine, it means it's running.
+        // Only 503 or connection failures mean "not ready yet".
         boolean isEmulator = endpoint.contains("localhost") || endpoint.contains("127.0.0.1");
         if (isEmulator) {
             logger.info("Detected emulator endpoint, polling until ready...");
@@ -86,11 +88,12 @@ public class CosmosDbConfiguration {
                     }
                     int status = conn.getResponseCode();
                     conn.disconnect();
-                    if (status == 200) {
-                        logger.info("Emulator endpoint is ready (HTTP 200)");
+                    if (status != 503) {
+                        // Any non-503 response (200, 401, etc.) means the emulator is up
+                        logger.info("Emulator endpoint is ready (HTTP {})", status);
                         break;
                     }
-                    logger.info("Emulator returned HTTP {}, retrying in 2s...", status);
+                    logger.info("Emulator returned HTTP 503 (starting up), retrying in 2s...");
                 } catch (Exception e) {
                     logger.info("Emulator not ready ({}), retrying in 2s...", e.getMessage());
                 }
