@@ -173,7 +173,7 @@ public class OrderController {
             totalSpent = Math.round(totalSpent * 100.0) / 100.0;
 
             double averageOrderValue = totalOrders > 0 ? totalSpent / totalOrders : 0.0;
-            averageOrderValue = Math.round(averageOrderValue * 1000.0) / 1000.0;
+            averageOrderValue = Math.round(averageOrderValue * 100.0) / 100.0;
 
             Map<String, Object> summary = new LinkedHashMap<>();
             summary.put("customerId", customerId);
