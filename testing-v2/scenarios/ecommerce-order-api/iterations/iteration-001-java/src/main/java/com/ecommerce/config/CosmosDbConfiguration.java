@@ -30,9 +30,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * Cosmos DB configuration with lazy initialization and TWO-PHASE background warmup.
  *
  * Phase 1: Polls the Cosmos DB endpoint with lightweight HTTP GET every 2s until
- *          it returns HTTP 200. This avoids wasting the 120s CI health check window
- *          on SDK internal timeouts (~23s per failed buildClient() call when emulator
- *          returns 503/10001).
+ *          it returns any non-503 HTTP response (401 = emulator is running but
+ *          requires auth). Only 503 and connection failures mean "still starting".
+ *          A 60s fallback timeout ensures Phase 1 proceeds regardless.
  *
  * Phase 2: Only after the endpoint is reachable, calls buildClient() and
  *          createDatabaseIfNotExists()/createContainerIfNotExists().
@@ -166,10 +166,12 @@ public class CosmosDbConfiguration {
 
     /**
      * Phase 1: Poll the Cosmos DB endpoint with a lightweight HTTP GET every 2s
-     * until it returns HTTP 200. This is much faster than calling buildClient()
-     * which has ~23s internal timeouts when the emulator returns 503.
+     * until it returns any non-503 HTTP response. The emulator returns 401 for
+     * unauthenticated requests when it IS ready — only 503 means "still starting".
+     * A 60s fallback timeout ensures Phase 1 proceeds regardless.
      */
     private void waitForEndpoint() {
+        long deadline = System.currentTimeMillis() + 60_000;
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 URL url = new URL(endpoint);
@@ -180,13 +182,18 @@ public class CosmosDbConfiguration {
                 int status = conn.getResponseCode();
                 conn.disconnect();
 
-                if (status == 200) {
+                if (status != 503) {
                     logger.info("Cosmos DB endpoint is reachable (HTTP {})", status);
                     return;
                 }
-                logger.info("Cosmos DB endpoint returned HTTP {}, waiting...", status);
+                logger.info("Cosmos DB endpoint returned HTTP 503, waiting...");
             } catch (Exception e) {
                 logger.info("Cosmos DB endpoint not ready: {}", e.getMessage());
+            }
+
+            if (System.currentTimeMillis() >= deadline) {
+                logger.warn("Phase 1 fallback timeout (60s) reached, proceeding to Phase 2");
+                return;
             }
 
             try {
