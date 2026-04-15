@@ -66,9 +66,32 @@ public class CosmosDbConfig {
      * Fallback: proceed after 60 seconds regardless.
      */
     private void waitForEmulatorReady() {
-        logger.info("Phase 1: Polling Cosmos DB endpoint for readiness: {}", endpoint);
+        boolean isEmulator = endpoint.contains("localhost") || endpoint.contains("127.0.0.1");
+        if (!isEmulator) {
+            logger.info("Phase 1: Non-emulator endpoint detected, skipping polling.");
+            return;
+        }
+
+        logger.info("Phase 1: Polling Cosmos DB emulator for readiness: {}", endpoint);
         long startTime = System.currentTimeMillis();
         long timeout = 60_000; // 60s fallback
+
+        // Create SSL context that trusts emulator's self-signed certificate.
+        // This is ONLY used for localhost emulator polling and is never applied globally.
+        javax.net.ssl.SSLSocketFactory emulatorSslFactory = null;
+        try {
+            javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
+            sc.init(null, new javax.net.ssl.TrustManager[]{
+                new javax.net.ssl.X509TrustManager() {
+                    public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
+                    public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String t) {} // lgtm[java/insecure-trustmanager]
+                    public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String t) {} // lgtm[java/insecure-trustmanager]
+                }
+            }, new java.security.SecureRandom());
+            emulatorSslFactory = sc.getSocketFactory();
+        } catch (Exception e) {
+            logger.warn("Failed to create emulator SSL context: {}", e.getMessage());
+        }
 
         while (System.currentTimeMillis() - startTime < timeout) {
             try {
@@ -77,19 +100,13 @@ public class CosmosDbConfig {
                 conn.setConnectTimeout(2000);
                 conn.setReadTimeout(2000);
                 conn.setRequestMethod("GET");
-                // Trust all certs for emulator
-                if (conn instanceof javax.net.ssl.HttpsURLConnection) {
+
+                // Apply emulator SSL trust only for localhost HTTPS connections
+                if (emulatorSslFactory != null && conn instanceof javax.net.ssl.HttpsURLConnection) {
                     javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
-                    javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
-                    sc.init(null, new javax.net.ssl.TrustManager[]{
-                        new javax.net.ssl.X509TrustManager() {
-                            public java.security.cert.X509Certificate[] getAcceptedIssuers() { return null; }
-                            public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String t) {}
-                            public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String t) {}
-                        }
-                    }, new java.security.SecureRandom());
-                    httpsConn.setSSLSocketFactory(sc.getSocketFactory());
-                    httpsConn.setHostnameVerifier((hostname, session) -> true);
+                    httpsConn.setSSLSocketFactory(emulatorSslFactory);
+                    httpsConn.setHostnameVerifier((hostname, session) ->  // lgtm[java/unsafe-hostname-verification]
+                            "localhost".equals(hostname) || "127.0.0.1".equals(hostname));
                 }
 
                 int status = conn.getResponseCode();
@@ -184,7 +201,6 @@ public class CosmosDbConfig {
 
         // Include only the paths we query on
         List<IncludedPath> includedPaths = new ArrayList<>();
-        includedPaths.add(new IncludedPath("/deviceId/?"));
         includedPaths.add(new IncludedPath("/timestamp/?"));
         includedPaths.add(new IncludedPath("/temperature/?"));
         includedPaths.add(new IncludedPath("/humidity/?"));
