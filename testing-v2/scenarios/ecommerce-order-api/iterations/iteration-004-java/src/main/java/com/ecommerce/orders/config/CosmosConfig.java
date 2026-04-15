@@ -77,13 +77,15 @@ public class CosmosConfig {
 
     /**
      * Two-phase warmup:
-     * Phase 1 - Poll endpoint with lightweight HTTP GET until 200.
+     * Phase 1 - Poll endpoint with lightweight HTTP GET until it responds.
+     *           The emulator returns 401 for unauthenticated requests — that means it IS running.
+     *           Only 503 and connection failures mean "still starting up".
      * Phase 2 - Build client and create database/container.
      */
     private void warmup() {
         log.info("Starting Cosmos DB warmup (endpoint: {})", endpoint);
 
-        // Phase 1: Poll the endpoint until it responds with HTTP 200
+        // Phase 1: Poll the endpoint until it responds (any non-503 HTTP status means ready)
         while (!Thread.currentThread().isInterrupted()) {
             try {
                 URL url = new URL(endpoint);
@@ -93,13 +95,15 @@ public class CosmosConfig {
                 conn.setRequestMethod("GET");
                 int code = conn.getResponseCode();
                 conn.disconnect();
-                if (code == 200) {
+                if (code != 503) {
+                    // Any response other than 503 means the emulator is running.
+                    // The emulator returns 401 for unauthenticated GET requests — that's fine.
                     log.info("Cosmos DB endpoint is reachable (HTTP {})", code);
                     break;
                 }
-                log.debug("Endpoint returned HTTP {}, retrying...", code);
+                log.info("Endpoint returned HTTP 503 (still starting), retrying...");
             } catch (Exception e) {
-                log.debug("Endpoint not reachable: {}, retrying...", e.getMessage());
+                log.info("Endpoint not reachable: {}, retrying...", e.getMessage());
             }
             try {
                 Thread.sleep(2000);
