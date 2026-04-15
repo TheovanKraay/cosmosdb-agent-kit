@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.KeyStore;
 
 /**
  * Cosmos DB configuration with lazy initialization and background warmup.
@@ -72,15 +73,13 @@ public class CosmosDbConfiguration {
                     conn.setConnectTimeout(2000);
                     conn.setReadTimeout(2000);
                     conn.setRequestMethod("GET");
-                    // Trust self-signed cert for polling
+                    // Reuse TrustAllProvider's trust managers for emulator self-signed cert
                     if (conn instanceof javax.net.ssl.HttpsURLConnection) {
                         javax.net.ssl.HttpsURLConnection httpsConn = (javax.net.ssl.HttpsURLConnection) conn;
+                        javax.net.ssl.TrustManagerFactory tmf = javax.net.ssl.TrustManagerFactory.getInstance("PKIX");
+                        tmf.init((KeyStore) null);
                         javax.net.ssl.SSLContext sc = javax.net.ssl.SSLContext.getInstance("TLS");
-                        sc.init(null, new javax.net.ssl.TrustManager[]{new javax.net.ssl.X509TrustManager() {
-                            public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
-                            public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {}
-                            public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
-                        }}, new java.security.SecureRandom());
+                        sc.init(null, tmf.getTrustManagers(), new java.security.SecureRandom());
                         httpsConn.setSSLSocketFactory(sc.getSocketFactory());
                         httpsConn.setHostnameVerifier((hostname, session) ->
                                 "localhost".equals(hostname) || "127.0.0.1".equals(hostname));
