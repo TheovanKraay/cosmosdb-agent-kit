@@ -1,0 +1,2 @@
+@echo off
+java -jar target/app.jar > "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\iot-device-telemetry\iterations\iteration-002-java\app-output.log" 2> "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\iot-device-telemetry\iterations\iteration-002-java\app-error.log"

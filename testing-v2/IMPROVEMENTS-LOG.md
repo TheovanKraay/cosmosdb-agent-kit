@@ -1250,3 +1250,34 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-04-16: iteration-002-java - Iot Device Telemetry (Java) [skills loaded]
+
+- **Scenario**: iot-device-telemetry
+- **Iteration**: iteration-002-java
+- **Skills loaded**: Yes
+- **Result**: PARTIAL -- 82/92 tests passed (89.1%)
+- **Score**: 7/10
+
+**Results by Category**:
+- api_contract: 46 passed, 0 failed, 0 skipped
+- build_startup: 2 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 11 passed, 1 failed, 1 skipped
+- data_integrity: 6 passed, 0 failed, 0 skipped
+- robustness: 19 passed, 8 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_schema_version** -- Failed: No documents have a schema version field. (Rule: model-schema-versioning)
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestInvalidInput::test_register_device_missing_device_id_returns_4xx** -- AssertionError: Missing deviceId should return 4xx, got 500. The app must validate required fields a
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestInvalidInput::test_register_device_empty_body_returns_4xx** -- AssertionError: Empty body should return 4xx, got 500. Server must not crash (500) on missing fields
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestInvalidInput::test_ingest_telemetry_missing_device_id_returns_4xx** -- AssertionError: Missing deviceId in telemetry should return 4xx, got 201. Server must validate requi
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestInvalidInput::test_ingest_telemetry_empty_body_returns_4xx** -- AssertionError: Empty telemetry body should return 4xx, got 201. Server must not crash on missing fi
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestInvalidInput::test_ingest_telemetry_for_nonexistent_device_returns_4xx** -- AssertionError: Telemetry for nonexistent device should return 4xx, got 201. Server should validate 
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestComputedFieldAccuracy::test_stats_temperature_min_correct** -- AssertionError: device-001 min temperature should be ~21.8 (readings: 22.5, 23.1, 21.8), got 20.0
+as
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestComputedFieldAccuracy::test_stats_humidity_values_correct** -- AssertionError: humidity max should be ~46.5, got 50.0
+assert 3.5 < 0.1
+ +  where 3.5 = abs((50.0 - 
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_robustness.TestEdgeCases::test_latest_reading_is_most_recent** -- AssertionError: Latest reading for device-001 should have temperature ~21.8 (the most recent seeded 
+
+**Test Results**: 82 passed, 10 failed out of 92
