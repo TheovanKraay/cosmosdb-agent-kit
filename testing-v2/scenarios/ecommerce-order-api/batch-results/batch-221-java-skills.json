@@ -1,0 +1,1233 @@
+{
+  "batch_issue": 221,
+  "scenario": "ecommerce-order-api",
+  "language": "java",
+  "skills": "yes",
+  "pr_numbers": "228,239,240,241,231",
+  "aggregate": {
+    "iterations": 2,
+    "startup_failures": 0,
+    "build_failures": 0,
+    "build_startup_status": [
+      {
+        "build": true,
+        "startup": true
+      },
+      {
+        "build": true,
+        "startup": true
+      }
+    ],
+    "pass_rate": {
+      "mean": 97.8,
+      "stddev": 1.6,
+      "min": 96.7,
+      "max": 98.9,
+      "values": [
+        98.9,
+        96.7
+      ]
+    },
+    "score": {
+      "mean": 8.5,
+      "stddev": 0.7,
+      "min": 8,
+      "max": 9,
+      "values": [
+        9,
+        8
+      ]
+    },
+    "passed": {
+      "mean": 89,
+      "values": [
+        90,
+        88
+      ]
+    },
+    "failed": {
+      "mean": 1,
+      "values": [
+        0,
+        2
+      ]
+    },
+    "total": {
+      "mean": 91,
+      "values": [
+        91,
+        91
+      ]
+    },
+    "test_consistency": {
+      "build_startup::app_startup": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "build_startup::build_compilation": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_calculates_total": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_has_timestamp": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_response_has_required_fields": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_returns_201": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_create_order_returns_items": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCreateOrder::test_new_order_status_is_pending": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_001_has_2_orders": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_entries_have_required_fields": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_only_contains_own_orders": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_returns_200": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_customer_orders_returns_array": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerOrders::test_empty_customer_returns_empty_array": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_001_summary_correct": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_003_summary_correct": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_summary_average_is_correct": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_summary_has_required_fields": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_customer_summary_returns_200": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestCustomerSummary::test_nonexistent_customer_summary_empty": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestDeleteOrder::test_delete_nonexistent_order_returns_404": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestDeleteOrder::test_delete_pending_order_returns_204": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestDeleteOrder::test_delete_shipped_order_returns_409": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestDeleteOrder::test_deleted_order_returns_404_on_get": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_existing_order": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_nonexistent_order_returns_404": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_has_required_fields": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestGetOrder::test_get_order_returns_correct_data": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestHealth::test_health_returns_200": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByDateRange::test_past_date_range_returns_empty": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByDateRange::test_query_by_date_range_returns_200": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByDateRange::test_query_by_date_range_returns_array": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByDateRange::test_wide_date_range_includes_seeded_orders": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByStatus::test_all_seeded_orders_are_pending": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByStatus::test_query_by_status_filters_correctly": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByStatus::test_query_by_status_returns_200": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByStatus::test_query_by_status_returns_array": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestQueryByStatus::test_query_shipped_initially_empty": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestUpdateOrderStatus::test_update_nonexistent_order_returns_404": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestUpdateOrderStatus::test_update_status_reflects_new_status": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestUpdateOrderStatus::test_update_status_response_has_required_fields": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestUpdateOrderStatus::test_update_status_returns_200": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_api_contract.TestUpdateOrderStatus::test_updated_status_persists_on_get": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestContainerPartitionKeys::test_no_default_id_partition_key": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestContainerPartitionKeys::test_order_container_uses_customer_partition_key": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestCrossBoundaryConsistency::test_customer_id_stored_correctly": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestCrossBoundaryConsistency::test_status_round_trip_through_cosmos": {
+        "outcomes": [
+          "skipped",
+          "skipped"
+        ],
+        "pass_count": 0,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "flaky",
+        "pass_rate": 0.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestCrossBoundaryConsistency::test_stored_item_count_matches_api": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestCrossBoundaryConsistency::test_stored_total_matches_api_total": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestCrossBoundaryConsistency::test_timestamps_stored_as_iso_strings": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_schema_version": {
+        "outcomes": [
+          "passed",
+          "failed"
+        ],
+        "pass_count": 1,
+        "fail_count": 1,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "flaky",
+        "pass_rate": 50.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_documents_have_type_discriminator": {
+        "outcomes": [
+          "passed",
+          "failed"
+        ],
+        "pass_count": 1,
+        "fail_count": 1,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "flaky",
+        "pass_rate": 50.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestDocumentStructure::test_orders_have_embedded_items": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestEnumSerialization::test_status_query_returns_correct_results": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestEnumSerialization::test_status_stored_as_string": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestIndexingPolicies::test_has_composite_indexes_for_order_queries": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestIndexingPolicies::test_has_custom_indexing_policy": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_cosmos_infrastructure.TestThroughputConfiguration::test_throughput_is_configured": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_data_integrity.TestDataPersistence::test_containers_exist_in_cosmos": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_data_integrity.TestDataPersistence::test_database_is_created": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_data_integrity.TestIndexingPolicy::test_containers_have_indexing_policy": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_data_integrity.TestPartitionKeyDesign::test_containers_have_partition_keys": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_data_integrity.TestPartitionKeyDesign::test_no_container_uses_id_as_sole_partition_key": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestComputedFieldAccuracy::test_multi_item_total": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestComputedFieldAccuracy::test_multi_quantity_total": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestComputedFieldAccuracy::test_seeded_order_totals_correct": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestComputedFieldAccuracy::test_single_item_total": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestCustomerSummaryConsistency::test_summary_reflects_deleted_order": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestCustomerSummaryConsistency::test_summary_updates_after_new_order": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestDataIsolation::test_customer_orders_isolated": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestDataIsolation::test_different_customers_see_different_orders": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestDataTypeCorrectness::test_order_field_types": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestDataTypeCorrectness::test_order_item_field_types": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestEdgeCases::test_get_order_preserves_all_items": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestEdgeCases::test_large_quantity_order": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestEdgeCases::test_order_with_many_items": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_create_order_empty_body_returns_4xx": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_create_order_empty_items_returns_4xx": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_create_order_missing_customer_id_returns_4xx": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_create_order_missing_items_returns_4xx": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_update_status_empty_body_returns_4xx": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestInvalidInput::test_update_status_invalid_value_returns_4xx": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestStatusTransitionRules::test_cancelled_to_anything_rejected": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestStatusTransitionRules::test_delivered_to_anything_rejected": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestStatusTransitionRules::test_pending_to_cancelled_allowed": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestStatusTransitionRules::test_pending_to_shipped_allowed": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestStatusTransitionRules::test_shipped_to_delivered_allowed": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestStatusTransitionRules::test_shipped_to_pending_rejected": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestStatusTransitions::test_updated_order_no_longer_in_original_status": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestStatusTransitions::test_updated_status_appears_in_status_query": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestWriteReadConsistency::test_created_order_fields_match_on_get": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestWriteReadConsistency::test_order_appears_in_customer_history": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      },
+      "testing-v2.scenarios.ecommerce-order-api.tests.test_robustness.TestWriteReadConsistency::test_order_appears_in_status_query": {
+        "outcomes": [
+          "passed",
+          "passed"
+        ],
+        "pass_count": 2,
+        "fail_count": 0,
+        "miss_count": 0,
+        "total_runs": 2,
+        "stability": "always-pass",
+        "pass_rate": 100.0
+      }
+    },
+    "category_stats": {
+      "api_contract": {
+        "mean": 100.0,
+        "stddev": 0.0,
+        "min": 100.0,
+        "max": 100.0,
+        "values": [
+          100.0,
+          100.0
+        ]
+      },
+      "build_startup": {
+        "mean": 100.0,
+        "stddev": 0.0,
+        "min": 100.0,
+        "max": 100.0,
+        "values": [
+          100.0,
+          100.0
+        ]
+      },
+      "cosmos_infrastructure": {
+        "mean": 86.7,
+        "stddev": 9.4,
+        "min": 80.0,
+        "max": 93.3,
+        "values": [
+          93.3,
+          80.0
+        ]
+      },
+      "data_integrity": {
+        "mean": 100.0,
+        "stddev": 0.0,
+        "min": 100.0,
+        "max": 100.0,
+        "values": [
+          100.0,
+          100.0
+        ]
+      },
+      "robustness": {
+        "mean": 100.0,
+        "stddev": 0.0,
+        "min": 100.0,
+        "max": 100.0,
+        "values": [
+          100.0,
+          100.0
+        ]
+      }
+    }
+  }
+}
