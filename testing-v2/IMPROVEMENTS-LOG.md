@@ -1250,3 +1250,32 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-04-16: iteration-003-java - Iot Device Telemetry (Java) [skills loaded]
+
+- **Scenario**: iot-device-telemetry
+- **Iteration**: iteration-003-java
+- **Skills loaded**: Yes
+- **Result**: FAILED -- 23/92 tests passed (25.0%)
+- **Score**: 1/10
+
+**Results by Category**:
+- api_contract: 8 passed, 38 failed, 0 skipped
+- build_startup: 2 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 6 passed, 7 failed, 0 skipped
+- data_integrity: 5 passed, 1 failed, 0 skipped
+- robustness: 4 passed, 23 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestGetDevice::test_get_existing_device** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestGetDevice::test_get_device_has_required_fields** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestGetDevicesByLocation::test_query_by_location_returns_200** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestGetDevicesByLocation::test_query_by_location_returns_array** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestGetDevicesByLocation::test_building_a_has_2_devices** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestGetDevicesByLocation::test_location_filter_is_correct** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestIngestTelemetry::test_ingest_returns_201** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestIngestTelemetry::test_ingest_response_has_required_fields** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestIngestTelemetry::test_ingest_returns_correct_values** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+1. **testing-v2.scenarios.iot-device-telemetry.tests.test_api_contract.TestBatchIngest::test_batch_ingest_returns_201** -- failed on setup with "AssertionError: Failed to ingest reading for device-001: 500 {"error":"{\"inne
+
+**Test Results**: 23 passed, 69 failed out of 92
