@@ -9,6 +9,7 @@ public class CosmosDbService
     private readonly Container _playersContainer;
     private readonly Container _scoresContainer;
     private readonly Container _leaderboardsContainer;
+    private const int MaxRetries = 10;
 
     public CosmosDbService(CosmosClient cosmosClient, string databaseName)
     {
@@ -50,7 +51,11 @@ public class CosmosDbService
     {
         try
         {
-            // 1. Delete all scores for the player
+            // 1. Get the player to find their region for leaderboard cleanup
+            var player = await GetPlayerAsync(playerId);
+            if (player == null) return false;
+
+            // 2. Delete all scores for the player
             var scoreQuery = new QueryDefinition("SELECT c.id FROM c WHERE c.playerId = @playerId")
                 .WithParameter("@playerId", playerId);
             var scoreIterator = _scoresContainer.GetItemQueryIterator<Score>(scoreQuery,
@@ -63,10 +68,6 @@ public class CosmosDbService
                     await _scoresContainer.DeleteItemAsync<Score>(score.Id, new PartitionKey(playerId));
                 }
             }
-
-            // 2. Get the player to find their region for leaderboard cleanup
-            var player = await GetPlayerAsync(playerId);
-            if (player == null) return false;
 
             // 3. Delete leaderboard entries (global + regional)
             try
@@ -97,11 +98,7 @@ public class CosmosDbService
 
     public async Task<Score> SubmitScoreAsync(string playerId, int scoreValue, string? gameMode)
     {
-        var player = await GetPlayerAsync(playerId);
-        if (player == null)
-            throw new InvalidOperationException("Player not found");
-
-        // Create score document
+        // Create score document first
         var scoreId = Guid.NewGuid().ToString();
         var score = new Score
         {
@@ -115,53 +112,82 @@ public class CosmosDbService
             SchemaVersion = 1
         };
 
-        await _scoresContainer.CreateItemAsync(score, new PartitionKey(playerId));
-
-        // Update player stats
-        player.TotalGames++;
-        player.TotalScore += scoreValue;
-        if (scoreValue > player.BestScore)
-            player.BestScore = scoreValue;
-        player.AverageScore = (double)player.TotalScore / player.TotalGames;
-
-        await _playersContainer.ReplaceItemAsync(player, player.Id, new PartitionKey(player.PlayerId));
-
-        // Upsert global leaderboard entry
-        var globalEntry = new LeaderboardEntry
+        // Update player stats with optimistic concurrency (ETag-based retry)
+        for (int retry = 0; retry < MaxRetries; retry++)
         {
-            Id = $"{playerId}_global",
-            LeaderboardKey = "global",
-            PlayerId = playerId,
-            DisplayName = player.DisplayName,
-            Region = player.Region,
-            Score = player.BestScore,
-            Type = "leaderboardEntry",
-            SchemaVersion = 1
-        };
-        await _leaderboardsContainer.UpsertItemAsync(globalEntry, new PartitionKey("global"));
+            ItemResponse<Player> playerResponse;
+            try
+            {
+                playerResponse = await _playersContainer.ReadItemAsync<Player>(playerId, new PartitionKey(playerId));
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+            {
+                throw new InvalidOperationException("Player not found");
+            }
 
-        // Upsert regional leaderboard entry
-        var regionalEntry = new LeaderboardEntry
-        {
-            Id = $"{playerId}_{player.Region}",
-            LeaderboardKey = player.Region,
-            PlayerId = playerId,
-            DisplayName = player.DisplayName,
-            Region = player.Region,
-            Score = player.BestScore,
-            Type = "leaderboardEntry",
-            SchemaVersion = 1
-        };
-        await _leaderboardsContainer.UpsertItemAsync(regionalEntry, new PartitionKey(player.Region));
+            var player = playerResponse.Resource;
+            string etag = playerResponse.ETag;
 
-        return score;
+            player.TotalGames++;
+            player.TotalScore += scoreValue;
+            if (scoreValue > player.BestScore)
+                player.BestScore = scoreValue;
+            player.AverageScore = (double)player.TotalScore / player.TotalGames;
+
+            try
+            {
+                await _playersContainer.ReplaceItemAsync(player, player.Id,
+                    new PartitionKey(player.PlayerId),
+                    new ItemRequestOptions { IfMatchEtag = etag });
+
+                // Player updated successfully; now create the score and update leaderboard
+                await _scoresContainer.CreateItemAsync(score, new PartitionKey(playerId));
+
+                // Upsert global leaderboard entry
+                var globalEntry = new LeaderboardEntry
+                {
+                    Id = $"{playerId}_global",
+                    LeaderboardKey = "global",
+                    PlayerId = playerId,
+                    DisplayName = player.DisplayName,
+                    Region = player.Region,
+                    Score = player.BestScore,
+                    Type = "leaderboardEntry",
+                    SchemaVersion = 1
+                };
+                await _leaderboardsContainer.UpsertItemAsync(globalEntry, new PartitionKey("global"));
+
+                // Upsert regional leaderboard entry
+                var regionalEntry = new LeaderboardEntry
+                {
+                    Id = $"{playerId}_{player.Region}",
+                    LeaderboardKey = player.Region,
+                    PlayerId = playerId,
+                    DisplayName = player.DisplayName,
+                    Region = player.Region,
+                    Score = player.BestScore,
+                    Type = "leaderboardEntry",
+                    SchemaVersion = 1
+                };
+                await _leaderboardsContainer.UpsertItemAsync(regionalEntry, new PartitionKey(player.Region));
+
+                return score;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed)
+            {
+                // ETag conflict — another write happened; retry
+                await Task.Delay(10 * (retry + 1));
+            }
+        }
+
+        throw new InvalidOperationException("Failed to update player stats after maximum retries");
     }
 
     public async Task<List<Score>> GetPlayerScoresAsync(string playerId, int limit)
     {
-        var query = new QueryDefinition("SELECT * FROM c WHERE c.playerId = @playerId ORDER BY c.timestamp DESC OFFSET 0 LIMIT @limit")
-            .WithParameter("@playerId", playerId)
-            .WithParameter("@limit", limit);
+        var queryText = $"SELECT TOP {limit} * FROM c WHERE c.playerId = @playerId ORDER BY c.timestamp DESC";
+        var query = new QueryDefinition(queryText)
+            .WithParameter("@playerId", playerId);
 
         var iterator = _scoresContainer.GetItemQueryIterator<Score>(query,
             requestOptions: new QueryRequestOptions { PartitionKey = new PartitionKey(playerId) });
@@ -180,8 +206,8 @@ public class CosmosDbService
 
     public async Task<List<LeaderboardEntry>> GetGlobalLeaderboardAsync(int top)
     {
-        var query = new QueryDefinition("SELECT TOP @top * FROM c WHERE c.leaderboardKey = 'global' ORDER BY c.score DESC, c.displayName ASC")
-            .WithParameter("@top", top);
+        var queryText = $"SELECT TOP {top} * FROM c WHERE c.leaderboardKey = 'global' ORDER BY c.score DESC, c.displayName ASC";
+        var query = new QueryDefinition(queryText);
 
         var iterator = _leaderboardsContainer.GetItemQueryIterator<LeaderboardEntry>(query);
 
@@ -197,8 +223,8 @@ public class CosmosDbService
 
     public async Task<List<LeaderboardEntry>> GetRegionalLeaderboardAsync(string region, int top)
     {
-        var query = new QueryDefinition("SELECT TOP @top * FROM c WHERE c.leaderboardKey = @region ORDER BY c.score DESC, c.displayName ASC")
-            .WithParameter("@top", top)
+        var queryText = $"SELECT TOP {top} * FROM c WHERE c.leaderboardKey = @region ORDER BY c.score DESC, c.displayName ASC";
+        var query = new QueryDefinition(queryText)
             .WithParameter("@region", region);
 
         var iterator = _leaderboardsContainer.GetItemQueryIterator<LeaderboardEntry>(query);
@@ -215,7 +241,6 @@ public class CosmosDbService
 
     public async Task<(LeaderboardEntry? playerEntry, List<LeaderboardEntry> allEntries)> GetPlayerRankDataAsync(string playerId)
     {
-        // Get all global leaderboard entries sorted by score DESC, displayName ASC
         var query = new QueryDefinition("SELECT * FROM c WHERE c.leaderboardKey = 'global' ORDER BY c.score DESC, c.displayName ASC");
 
         var iterator = _leaderboardsContainer.GetItemQueryIterator<LeaderboardEntry>(query);
@@ -235,5 +260,47 @@ public class CosmosDbService
         }
 
         return (playerEntry, allEntries);
+    }
+
+    public async Task UpdateLeaderboardEntriesAsync(Player player, string oldRegion, bool regionChanged)
+    {
+        // Update global leaderboard entry
+        var globalEntry = new LeaderboardEntry
+        {
+            Id = $"{player.PlayerId}_global",
+            LeaderboardKey = "global",
+            PlayerId = player.PlayerId,
+            DisplayName = player.DisplayName,
+            Region = player.Region,
+            Score = player.BestScore,
+            Type = "leaderboardEntry",
+            SchemaVersion = 1
+        };
+        await _leaderboardsContainer.UpsertItemAsync(globalEntry, new PartitionKey("global"));
+
+        if (regionChanged)
+        {
+            // Delete old regional entry
+            try
+            {
+                string oldRegionalId = $"{player.PlayerId}_{oldRegion}";
+                await _leaderboardsContainer.DeleteItemAsync<LeaderboardEntry>(oldRegionalId, new PartitionKey(oldRegion));
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound) { }
+        }
+
+        // Upsert new regional entry
+        var regionalEntry = new LeaderboardEntry
+        {
+            Id = $"{player.PlayerId}_{player.Region}",
+            LeaderboardKey = player.Region,
+            PlayerId = player.PlayerId,
+            DisplayName = player.DisplayName,
+            Region = player.Region,
+            Score = player.BestScore,
+            Type = "leaderboardEntry",
+            SchemaVersion = 1
+        };
+        await _leaderboardsContainer.UpsertItemAsync(regionalEntry, new PartitionKey(player.Region));
     }
 }

@@ -34,11 +34,7 @@ var cosmosClientOptions = new CosmosClientOptions
             ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         };
         return new HttpClient(handler);
-    } : null,
-    SerializerOptions = new CosmosSerializationOptions
-    {
-        PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
-    }
+    } : null
 };
 
 var cosmosClient = new CosmosClient(cosmosEndpoint, cosmosKey, cosmosClientOptions);
@@ -57,30 +53,52 @@ app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
 // POST /api/players
 app.MapPost("/api/players", async (HttpContext context, CosmosDbService db) =>
 {
-    var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+    JsonElement body;
+    try
+    {
+        body = (await context.Request.ReadFromJsonAsync<JsonElement>())!;
+    }
+    catch
+    {
+        return Results.BadRequest(new { error = "Invalid JSON body" });
+    }
+
+    if (!body.TryGetProperty("playerId", out var playerIdProp) || string.IsNullOrEmpty(playerIdProp.GetString()))
+        return Results.BadRequest(new { error = "playerId is required" });
+    if (!body.TryGetProperty("displayName", out var displayNameProp) || string.IsNullOrEmpty(displayNameProp.GetString()))
+        return Results.BadRequest(new { error = "displayName is required" });
+    if (!body.TryGetProperty("region", out var regionProp) || string.IsNullOrEmpty(regionProp.GetString()))
+        return Results.BadRequest(new { error = "region is required" });
 
     var player = new Player
     {
-        PlayerId = body.GetProperty("playerId").GetString()!,
-        DisplayName = body.GetProperty("displayName").GetString()!,
-        Region = body.GetProperty("region").GetString()!,
+        PlayerId = playerIdProp.GetString()!,
+        DisplayName = displayNameProp.GetString()!,
+        Region = regionProp.GetString()!,
         TotalGames = 0,
         BestScore = 0,
         AverageScore = 0,
         TotalScore = 0
     };
 
-    var created = await db.CreatePlayerAsync(player);
-
-    return Results.Created($"/api/players/{created.PlayerId}", new
+    try
     {
-        playerId = created.PlayerId,
-        displayName = created.DisplayName,
-        region = created.Region,
-        totalGames = created.TotalGames,
-        bestScore = created.BestScore,
-        averageScore = created.AverageScore
-    });
+        var created = await db.CreatePlayerAsync(player);
+
+        return Results.Created($"/api/players/{created.PlayerId}", new
+        {
+            playerId = created.PlayerId,
+            displayName = created.DisplayName,
+            region = created.Region,
+            totalGames = created.TotalGames,
+            bestScore = created.BestScore,
+            averageScore = created.AverageScore
+        });
+    }
+    catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.Conflict)
+    {
+        return Results.Conflict(new { error = $"Player {player.PlayerId} already exists" });
+    }
 });
 
 // GET /api/players/{playerId}
@@ -108,13 +126,37 @@ app.MapPatch("/api/players/{playerId}", async (string playerId, HttpContext cont
 
     var body = await context.Request.ReadFromJsonAsync<JsonElement>();
 
-    if (body.TryGetProperty("displayName", out var displayNameProp))
-        player.DisplayName = displayNameProp.GetString()!;
+    string? oldRegion = player.Region;
+    bool displayNameChanged = false;
+    bool regionChanged = false;
 
-    if (body.TryGetProperty("region", out var regionProp))
-        player.Region = regionProp.GetString()!;
+    if (body.TryGetProperty("displayName", out var displayNameProp))
+    {
+        var newName = displayNameProp.GetString();
+        if (newName != null && newName != player.DisplayName)
+        {
+            player.DisplayName = newName;
+            displayNameChanged = true;
+        }
+    }
+
+    if (body.TryGetProperty("region", out var regionPropVal))
+    {
+        var newRegion = regionPropVal.GetString();
+        if (newRegion != null && newRegion != player.Region)
+        {
+            player.Region = newRegion;
+            regionChanged = true;
+        }
+    }
 
     var updated = await db.UpdatePlayerAsync(player);
+
+    // Update leaderboard entries if display name or region changed and player has scores
+    if ((displayNameChanged || regionChanged) && updated.BestScore > 0)
+    {
+        await db.UpdateLeaderboardEntriesAsync(updated, oldRegion!, regionChanged);
+    }
 
     return Results.Ok(new
     {
@@ -137,15 +179,40 @@ app.MapDelete("/api/players/{playerId}", async (string playerId, CosmosDbService
 // POST /api/scores
 app.MapPost("/api/scores", async (HttpContext context, CosmosDbService db) =>
 {
-    var body = await context.Request.ReadFromJsonAsync<JsonElement>();
+    JsonElement body;
+    try
+    {
+        body = (await context.Request.ReadFromJsonAsync<JsonElement>())!;
+    }
+    catch
+    {
+        return Results.BadRequest(new { error = "Invalid JSON body" });
+    }
 
-    var playerId = body.GetProperty("playerId").GetString()!;
-    var scoreValue = body.GetProperty("score").GetInt32();
+    if (!body.TryGetProperty("playerId", out var playerIdProp) || string.IsNullOrEmpty(playerIdProp.GetString()))
+        return Results.BadRequest(new { error = "playerId is required" });
+
+    if (!body.TryGetProperty("score", out var scoreProp))
+        return Results.BadRequest(new { error = "score is required" });
+
+    int scoreValue;
+    try
+    {
+        scoreValue = scoreProp.GetInt32();
+    }
+    catch
+    {
+        return Results.BadRequest(new { error = "score must be an integer" });
+    }
+
+    if (scoreValue < 0)
+        return Results.BadRequest(new { error = "score must be a positive integer" });
+
     string? gameMode = body.TryGetProperty("gameMode", out var gm) ? gm.GetString() : null;
 
     try
     {
-        var score = await db.SubmitScoreAsync(playerId, scoreValue, gameMode);
+        var score = await db.SubmitScoreAsync(playerIdProp.GetString()!, scoreValue, gameMode);
         return Results.Created($"/api/scores/{score.ScoreId}", new
         {
             scoreId = score.ScoreId,
@@ -155,7 +222,7 @@ app.MapPost("/api/scores", async (HttpContext context, CosmosDbService db) =>
     }
     catch (InvalidOperationException)
     {
-        return Results.NotFound();
+        return Results.NotFound(new { error = "Player not found" });
     }
 });
 
@@ -186,8 +253,10 @@ app.MapGet("/api/players/{playerId}/scores", async (string playerId, int? limit,
 // GET /api/leaderboards/global
 app.MapGet("/api/leaderboards/global", async (int? top, CosmosDbService db) =>
 {
-    var effectiveTop = Math.Min(top ?? 100, 100);
-    if (effectiveTop < 1) effectiveTop = 1;
+    var effectiveTop = top ?? 100;
+    if (effectiveTop > 100) effectiveTop = 100;
+    if (effectiveTop < 1)
+        return Results.Ok(Array.Empty<object>());
 
     var entries = await db.GetGlobalLeaderboardAsync(effectiveTop);
 
@@ -205,8 +274,10 @@ app.MapGet("/api/leaderboards/global", async (int? top, CosmosDbService db) =>
 // GET /api/leaderboards/regional/{region}
 app.MapGet("/api/leaderboards/regional/{region}", async (string region, int? top, CosmosDbService db) =>
 {
-    var effectiveTop = Math.Min(top ?? 100, 100);
-    if (effectiveTop < 1) effectiveTop = 1;
+    var effectiveTop = top ?? 100;
+    if (effectiveTop > 100) effectiveTop = 100;
+    if (effectiveTop < 1)
+        return Results.Ok(Array.Empty<object>());
 
     var entries = await db.GetRegionalLeaderboardAsync(region, effectiveTop);
 
@@ -224,14 +295,12 @@ app.MapGet("/api/leaderboards/regional/{region}", async (string region, int? top
 // GET /api/players/{playerId}/rank
 app.MapGet("/api/players/{playerId}/rank", async (string playerId, CosmosDbService db) =>
 {
-    // Check player exists
     var player = await db.GetPlayerAsync(playerId);
     if (player == null) return Results.NotFound();
 
     var (playerEntry, allEntries) = await db.GetPlayerRankDataAsync(playerId);
     if (playerEntry == null) return Results.NotFound();
 
-    // Find player's index
     int playerIndex = -1;
     for (int i = 0; i < allEntries.Count; i++)
     {
@@ -246,7 +315,6 @@ app.MapGet("/api/players/{playerId}/rank", async (string playerId, CosmosDbServi
 
     int playerRank = playerIndex + 1;
 
-    // Get ±10 neighbors
     int startIndex = Math.Max(0, playerIndex - 10);
     int endIndex = Math.Min(allEntries.Count - 1, playerIndex + 10);
 
@@ -276,10 +344,9 @@ app.Run();
 
 async Task InitializeCosmosDbAsync(CosmosClient client)
 {
-    // Create database with autoscale throughput (400 RU/s max)
     var databaseResponse = await client.CreateDatabaseIfNotExistsAsync(
         DatabaseName,
-        ThroughputProperties.CreateAutoscaleThroughput(400));
+        ThroughputProperties.CreateAutoscaleThroughput(1000));
 
     var database = databaseResponse.Database;
 
