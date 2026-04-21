@@ -28,10 +28,6 @@ var cosmosClientOptions = new CosmosClientOptions
                 HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         };
         return new HttpClient(handler);
-    },
-    SerializerOptions = new CosmosSerializationOptions
-    {
-        PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
     }
 };
 
@@ -239,37 +235,29 @@ app.MapPost("/api/scores", async (SubmitScoreRequest? request, CosmosDbService d
 
     await db.CreateScoreAsync(score);
 
-    // Update player stats
-    player.TotalGames += 1;
-    player.TotalScore += request.Score.Value;
-    if (request.Score.Value > player.BestScore)
-    {
-        player.BestScore = request.Score.Value;
-    }
-    player.AverageScore = (double)player.TotalScore / player.TotalGames;
-
-    await db.UpdatePlayerAsync(player);
+    // Update player stats with ETag-based optimistic concurrency
+    var updatedPlayer = await db.UpdatePlayerStatsWithRetryAsync(request.PlayerId, request.Score.Value);
 
     // Update leaderboard entries (upsert for both global and regional)
     var globalEntry = new LeaderboardEntry
     {
         Id = $"global_{request.PlayerId}",
         PlayerId = request.PlayerId,
-        DisplayName = player.DisplayName,
-        Region = player.Region,
-        Score = player.BestScore,
+        DisplayName = updatedPlayer.DisplayName,
+        Region = updatedPlayer.Region,
+        Score = updatedPlayer.BestScore,
         LeaderboardKey = "global"
     };
     await db.UpsertLeaderboardEntryAsync(globalEntry);
 
     var regionalEntry = new LeaderboardEntry
     {
-        Id = $"region_{player.Region}_{request.PlayerId}",
+        Id = $"region_{updatedPlayer.Region}_{request.PlayerId}",
         PlayerId = request.PlayerId,
-        DisplayName = player.DisplayName,
-        Region = player.Region,
-        Score = player.BestScore,
-        LeaderboardKey = $"region_{player.Region}"
+        DisplayName = updatedPlayer.DisplayName,
+        Region = updatedPlayer.Region,
+        Score = updatedPlayer.BestScore,
+        LeaderboardKey = $"region_{updatedPlayer.Region}"
     };
     await db.UpsertLeaderboardEntryAsync(regionalEntry);
 

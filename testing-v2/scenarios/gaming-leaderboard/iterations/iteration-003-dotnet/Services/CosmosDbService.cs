@@ -125,6 +125,54 @@ public class CosmosDbService
         return response.Resource;
     }
 
+    /// <summary>
+    /// Atomically update player stats after a new score submission.
+    /// Uses read-modify-write with ETag-based optimistic concurrency to prevent lost updates.
+    /// </summary>
+    public async Task<Player> UpdatePlayerStatsWithRetryAsync(string playerId, int newScore, int maxRetries = 10)
+    {
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var readResponse = await _playersContainer!.ReadItemAsync<Player>(
+                    playerId,
+                    new PartitionKey(playerId));
+
+                var player = readResponse.Resource;
+                string etag = readResponse.ETag;
+
+                player.TotalGames += 1;
+                player.TotalScore += newScore;
+                if (newScore > player.BestScore)
+                {
+                    player.BestScore = newScore;
+                }
+                player.AverageScore = (double)player.TotalScore / player.TotalGames;
+
+                var options = new ItemRequestOptions
+                {
+                    IfMatchEtag = etag
+                };
+
+                var response = await _playersContainer.ReplaceItemAsync(
+                    player,
+                    player.Id,
+                    new PartitionKey(player.PlayerId),
+                    options);
+
+                return response.Resource;
+            }
+            catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.PreconditionFailed && attempt < maxRetries)
+            {
+                // ETag mismatch — another request updated the document. Retry.
+                await Task.Delay(Random.Shared.Next(10, 50));
+            }
+        }
+
+        throw new InvalidOperationException($"Failed to update player stats for {playerId} after {maxRetries} retries");
+    }
+
     public async Task<bool> DeletePlayerAsync(string playerId)
     {
         try
