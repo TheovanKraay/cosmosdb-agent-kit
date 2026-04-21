@@ -1,12 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using GamingLeaderboard.Models;
 using GamingLeaderboard.Services;
+using System.Text.RegularExpressions;
 
 namespace GamingLeaderboard.Controllers;
 
 [ApiController]
 [Route("api/leaderboards")]
-public class LeaderboardsController : ControllerBase
+public partial class LeaderboardsController : ControllerBase
 {
     private readonly CosmosDbService _cosmosService;
     private readonly ILogger<LeaderboardsController> _logger;
@@ -67,8 +68,14 @@ public class LeaderboardsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting regional leaderboard for {Region}", region);
+            _logger.LogError(ex, "Error getting regional leaderboard for {Region}", SanitizeForLog(region));
             return StatusCode(500, new { error = "Internal server error." });
         }
     }
+
+    private static string SanitizeForLog(string? input) =>
+        input == null ? "" : ControlCharsRegex().Replace(input, "_");
+
+    [GeneratedRegex(@"[\r\n\t]")]
+    private static partial Regex ControlCharsRegex();
 }

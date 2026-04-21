@@ -3,12 +3,13 @@ using Microsoft.Azure.Cosmos;
 using GamingLeaderboard.Models;
 using GamingLeaderboard.Services;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace GamingLeaderboard.Controllers;
 
 [ApiController]
 [Route("api/players")]
-public class PlayersController : ControllerBase
+public partial class PlayersController : ControllerBase
 {
     private readonly CosmosDbService _cosmosService;
     private readonly ILogger<PlayersController> _logger;
@@ -18,6 +19,9 @@ public class PlayersController : ControllerBase
         _cosmosService = cosmosService;
         _logger = logger;
     }
+
+    private static string SanitizeForLog(string? input) =>
+        input == null ? "" : ControlCharsRegex().Replace(input, "_");
 
     [HttpPost]
     public async Task<IActionResult> CreatePlayer([FromBody] CreatePlayerRequest? request)
@@ -53,7 +57,7 @@ public class PlayersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating player {PlayerId}", request.PlayerId);
+            _logger.LogError(ex, "Error creating player {PlayerId}", SanitizeForLog(request.PlayerId));
             return StatusCode(500, new { error = "Internal server error." });
         }
     }
@@ -72,7 +76,7 @@ public class PlayersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting player {PlayerId}", playerId);
+            _logger.LogError(ex, "Error getting player {PlayerId}", SanitizeForLog(playerId));
             return StatusCode(500, new { error = "Internal server error." });
         }
     }
@@ -130,7 +134,7 @@ public class PlayersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating player {PlayerId}", playerId);
+            _logger.LogError(ex, "Error updating player {PlayerId}", SanitizeForLog(playerId));
             return StatusCode(500, new { error = "Internal server error." });
         }
     }
@@ -160,7 +164,7 @@ public class PlayersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting player {PlayerId}", playerId);
+            _logger.LogError(ex, "Error deleting player {PlayerId}", SanitizeForLog(playerId));
             return StatusCode(500, new { error = "Internal server error." });
         }
     }
@@ -193,7 +197,7 @@ public class PlayersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting scores for player {PlayerId}", playerId);
+            _logger.LogError(ex, "Error getting scores for player {PlayerId}", SanitizeForLog(playerId));
             return StatusCode(500, new { error = "Internal server error." });
         }
     }
@@ -259,7 +263,7 @@ public class PlayersController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting rank for player {PlayerId}", playerId);
+            _logger.LogError(ex, "Error getting rank for player {PlayerId}", SanitizeForLog(playerId));
             return StatusCode(500, new { error = "Internal server error." });
         }
     }
@@ -276,4 +280,7 @@ public class PlayersController : ControllerBase
             AverageScore = player.AverageScore
         };
     }
+
+    [GeneratedRegex(@"[\r\n\t]")]
+    private static partial Regex ControlCharsRegex();
 }

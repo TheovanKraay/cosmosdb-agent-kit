@@ -3,12 +3,13 @@ using Microsoft.Azure.Cosmos;
 using GamingLeaderboard.Models;
 using GamingLeaderboard.Services;
 using System.Net;
+using System.Text.RegularExpressions;
 
 namespace GamingLeaderboard.Controllers;
 
 [ApiController]
 [Route("api/scores")]
-public class ScoresController : ControllerBase
+public partial class ScoresController : ControllerBase
 {
     private readonly CosmosDbService _cosmosService;
     private readonly ILogger<ScoresController> _logger;
@@ -80,8 +81,14 @@ public class ScoresController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error submitting score for player {PlayerId}", request.PlayerId);
+            _logger.LogError(ex, "Error submitting score for player {PlayerId}", SanitizeForLog(request.PlayerId));
             return StatusCode(500, new { error = "Internal server error." });
         }
     }
+
+    private static string SanitizeForLog(string? input) =>
+        input == null ? "" : ControlCharsRegex().Replace(input, "_");
+
+    [GeneratedRegex(@"[\r\n\t]")]
+    private static partial Regex ControlCharsRegex();
 }
