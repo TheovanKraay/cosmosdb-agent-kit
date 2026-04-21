@@ -5,3 +5,6 @@ __pycache__/
 # Testing iteration extracted source (keep only zips)
 testing/scenarios/**/iterations/**/ecommerce-order-api/
 testing/scenarios/**/iterations/**/target/
+# .NET build artifacts
+testing-v2/scenarios/**/iterations/**/bin/
+testing-v2/scenarios/**/iterations/**/obj/
