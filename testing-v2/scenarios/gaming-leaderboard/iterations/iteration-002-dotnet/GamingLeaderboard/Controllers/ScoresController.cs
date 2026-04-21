@@ -11,7 +11,7 @@ public class ScoresController : ControllerBase
 {
     private readonly CosmosDbService _cosmos;
     private readonly ILogger<ScoresController> _logger;
-    private const int MaxRetries = 5;
+    private const int MaxRetries = 10;
 
     public ScoresController(CosmosDbService cosmos, ILogger<ScoresController> logger)
     {

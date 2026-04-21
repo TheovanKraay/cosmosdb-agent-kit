@@ -2,6 +2,6 @@ language: dotnet
 database: gaming-leaderboard
 port: 5000
 health: /health
-build: dotnet build
-run: dotnet run --urls http://0.0.0.0:5000
+build: dotnet build GamingLeaderboard
+run: dotnet run --project GamingLeaderboard --urls http://0.0.0.0:5000
 skills_loaded: true

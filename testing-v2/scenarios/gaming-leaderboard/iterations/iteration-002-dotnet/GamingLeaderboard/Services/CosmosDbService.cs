@@ -27,11 +27,6 @@ public class CosmosDbService
             ?? "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==";
         _databaseName = Environment.GetEnvironmentVariable("COSMOS_DATABASE") ?? "gaming-leaderboard";
 
-        var serializer = new CosmosSerializationOptions
-        {
-            PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase
-        };
-
         _client = new CosmosClientBuilder(endpoint, key)
             .WithConnectionModeGateway()
             .WithHttpClientFactory(() =>

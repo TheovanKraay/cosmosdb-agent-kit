@@ -80,60 +80,67 @@ public class PlayersController : ControllerBase
             return BadRequest(new { error = "Request body is required" });
         }
 
-        try
+        const int maxRetries = 5;
+        for (int attempt = 0; attempt < maxRetries; attempt++)
         {
-            // Read the current player with ETag
-            var readResponse = await _cosmos.PlayersContainer.ReadItemAsync<Player>(
-                playerId, new PartitionKey(playerId));
-            var player = readResponse.Resource;
-            var etag = readResponse.ETag;
-
-            bool regionChanged = false;
-            string? oldRegion = player.Region;
-
-            if (!string.IsNullOrWhiteSpace(request.DisplayName))
+            try
             {
-                player.DisplayName = request.DisplayName;
-            }
-            if (!string.IsNullOrWhiteSpace(request.Region))
-            {
-                if (player.Region != request.Region)
+                // Read the current player with ETag
+                var readResponse = await _cosmos.PlayersContainer.ReadItemAsync<Player>(
+                    playerId, new PartitionKey(playerId));
+                var player = readResponse.Resource;
+                var etag = readResponse.ETag;
+
+                bool regionChanged = false;
+                string? oldRegion = player.Region;
+
+                if (!string.IsNullOrWhiteSpace(request.DisplayName))
                 {
-                    regionChanged = true;
+                    player.DisplayName = request.DisplayName;
                 }
-                player.Region = request.Region;
-            }
-
-            player.UpdatedAt = DateTime.UtcNow.ToString("o");
-
-            // Use ETag for optimistic concurrency
-            var replaceResponse = await _cosmos.PlayersContainer.ReplaceItemAsync(
-                player,
-                playerId,
-                new PartitionKey(playerId),
-                new ItemRequestOptions
+                if (!string.IsNullOrWhiteSpace(request.Region))
                 {
-                    IfMatchEtag = etag,
-                    EnableContentResponseOnWrite = true
-                });
+                    if (player.Region != request.Region)
+                    {
+                        regionChanged = true;
+                    }
+                    player.Region = request.Region;
+                }
 
-            // Update leaderboard entries if display name or region changed
-            if (request.DisplayName != null || regionChanged)
-            {
-                await UpdateLeaderboardEntries(player, regionChanged, oldRegion);
+                player.UpdatedAt = DateTime.UtcNow.ToString("o");
+
+                // Use ETag for optimistic concurrency
+                var replaceResponse = await _cosmos.PlayersContainer.ReplaceItemAsync(
+                    player,
+                    playerId,
+                    new PartitionKey(playerId),
+                    new ItemRequestOptions
+                    {
+                        IfMatchEtag = etag,
+                        EnableContentResponseOnWrite = true
+                    });
+
+                // Update leaderboard entries if display name or region changed
+                if (request.DisplayName != null || regionChanged)
+                {
+                    await UpdateLeaderboardEntries(replaceResponse.Resource, regionChanged, oldRegion);
+                }
+
+                return Ok(PlayerResponse.FromPlayer(replaceResponse.Resource));
             }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return NotFound(new { error = $"Player '{playerId}' not found" });
+            }
+            catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
+            {
+                _logger.LogDebug("ETag conflict on UpdatePlayer {PlayerId}, retry {Attempt}", playerId, attempt + 1);
+                if (attempt == maxRetries - 1) throw;
+                await Task.Delay(Random.Shared.Next(10, 50 * (attempt + 1)));
+            }
+        }
 
-            return Ok(PlayerResponse.FromPlayer(replaceResponse.Resource));
-        }
-        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            return NotFound(new { error = $"Player '{playerId}' not found" });
-        }
-        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.PreconditionFailed)
-        {
-            // Retry on ETag conflict
-            return await UpdatePlayer(playerId, request);
-        }
+        return StatusCode(500, new { error = "Failed to update player after retries" });
     }
 
     [HttpDelete("{playerId}")]
@@ -146,7 +153,7 @@ public class PlayersController : ControllerBase
                 playerId, new PartitionKey(playerId));
 
             // Delete scores for this player
-            var scoreQuery = new QueryDefinition("SELECT * FROM c WHERE c.playerId = @playerId")
+            var scoreQuery = new QueryDefinition("SELECT c.id FROM c WHERE c.playerId = @playerId")
                 .WithParameter("@playerId", playerId);
 
             using var scoreFeed = _cosmos.ScoresContainer.GetItemQueryIterator<Score>(
@@ -301,7 +308,7 @@ public class PlayersController : ControllerBase
                 var batch = await feed.ReadNextAsync();
                 foreach (var entry in batch)
                 {
-                    if (regionChanged && entry.LeaderboardKey.StartsWith(oldRegion + "_"))
+                    if (regionChanged && oldRegion != null && entry.LeaderboardKey.StartsWith(oldRegion + "_"))
                     {
                         entriesToDelete.Add(entry);
                     }
@@ -357,7 +364,7 @@ public class PlayersController : ControllerBase
     {
         try
         {
-            var query = new QueryDefinition("SELECT * FROM c WHERE c.playerId = @playerId")
+            var query = new QueryDefinition("SELECT c.id, c.leaderboardKey FROM c WHERE c.playerId = @playerId")
                 .WithParameter("@playerId", playerId);
 
             using var feed = _cosmos.LeaderboardsContainer.GetItemQueryIterator<LeaderboardEntry>(
