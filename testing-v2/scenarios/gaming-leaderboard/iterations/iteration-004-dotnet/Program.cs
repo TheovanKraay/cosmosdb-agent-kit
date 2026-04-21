@@ -278,7 +278,7 @@ app.MapGet("/api/players/{playerId}/scores", async (
     var player = await playerRepo.GetPlayerAsync(playerId);
     if (player == null) return Results.NotFound(new { error = "Player not found" });
 
-    var effectiveLimit = Math.Max(1, Math.Min(limit ?? 10, 100));
+    var effectiveLimit = Math.Max(0, Math.Min(limit ?? 10, 100));
     var scores = await scoreRepo.GetPlayerScoresAsync(playerId, effectiveLimit);
 
     var result = scores.Select(s => new ScoreHistoryEntry

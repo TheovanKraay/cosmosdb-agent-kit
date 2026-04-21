@@ -113,7 +113,7 @@ public class PlayerRepository
             {
                 if (attempt == maxRetries - 1)
                 {
-                    _logger.LogError(ex, "Failed to update stats for player {PlayerId} after {MaxRetries} attempts", playerId, maxRetries);
+                    _logger.LogError(ex, "Failed to update stats for player after {MaxRetries} attempts", maxRetries);
                     throw;
                 }
                 // Brief delay before retry to reduce contention
