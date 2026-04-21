@@ -1,6 +1,5 @@
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Fluent;
-using GamingLeaderboard.Models;
 using Newtonsoft.Json;
 
 namespace GamingLeaderboard.Services;
