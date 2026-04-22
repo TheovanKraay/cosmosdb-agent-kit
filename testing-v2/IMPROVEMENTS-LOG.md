@@ -1294,3 +1294,20 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-04-22: iteration-005-dotnet - Gaming Leaderboard (Dotnet) [skills loaded]
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: iteration-005-dotnet
+- **Skills loaded**: Yes
+- **Result**: SUCCESSFUL -- 94/94 tests passed (100%)
+- **Score**: 10/10
+
+**Results by Category**:
+- api_contract: 45 passed, 0 failed, 0 skipped
+- build_startup: 2 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 13 passed, 0 failed, 0 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 31 passed, 0 failed, 0 skipped
+
+**Test Results**: 94 passed, 0 failed out of 94

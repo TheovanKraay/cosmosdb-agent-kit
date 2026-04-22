@@ -1,0 +1,7 @@
+{
+  "succeeded": true,
+  "stdout_tail": "  Determining projects to restore...\n  Restored D:\\a\\cosmosdb-agent-kit\\cosmosdb-agent-kit\\testing-v2\\scenarios\\gaming-leaderboard\\iterations\\iteration-005-dotnet\\GamingLeaderboard.csproj (in 16.41 sec).\n  GamingLeaderboard -> D:\\a\\cosmosdb-agent-kit\\cosmosdb-agent-kit\\testing-v2\\scenarios\\gaming-leaderboard\\iterations\\iteration-005-dotnet\\bin\\Debug\\net8.0\\GamingLeaderboard.dll\n\nBuild succeeded.\n    0 Warning(s)\n    0 Error(s)\n\nTime Elapsed 00:00:26.80",
+  "exit_code": 0,
+  "build_command": "dotnet build",
+  "stderr_tail": ""
+}
