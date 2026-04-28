@@ -3,5 +3,5 @@ database: gaming-leaderboard
 port: 8080
 health: /health
 build: cargo build --release
-run: ./target/release/gaming-leaderboard
+run: .\target\release\gaming-leaderboard.exe
 skills_loaded: true
