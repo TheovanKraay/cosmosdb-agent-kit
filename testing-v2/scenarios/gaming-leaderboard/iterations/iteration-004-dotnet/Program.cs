@@ -43,8 +43,29 @@ builder.Services.AddSingleton<LeaderboardRepository>();
 
 var app = builder.Build();
 
-// Initialize database and containers on startup
-await cosmosDbService.InitializeAsync();
+// Initialize database and containers in the background
+// Health check will work immediately; DB operations will wait for init
+_ = Task.Run(async () =>
+{
+    try
+    {
+        await cosmosDbService.EnsureInitializedAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Background Cosmos DB init failed: {ex.Message}");
+    }
+});
+
+// Middleware to ensure Cosmos DB is initialized before API requests (not health)
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.StartsWithSegments("/api"))
+    {
+        await cosmosDbService.EnsureInitializedAsync();
+    }
+    await next();
+});
 
 // =====================
 // Health Check

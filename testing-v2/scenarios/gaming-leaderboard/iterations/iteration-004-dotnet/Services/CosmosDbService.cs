@@ -10,6 +10,8 @@ public class CosmosDbService
     private Container? _playersContainer;
     private Container? _scoresContainer;
     private Container? _leaderboardContainer;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private bool _initialized;
 
     public Container PlayersContainer => _playersContainer
         ?? throw new InvalidOperationException("CosmosDbService not initialized");
@@ -17,6 +19,7 @@ public class CosmosDbService
         ?? throw new InvalidOperationException("CosmosDbService not initialized");
     public Container LeaderboardContainer => _leaderboardContainer
         ?? throw new InvalidOperationException("CosmosDbService not initialized");
+    public bool IsInitialized => _initialized;
 
     public CosmosDbService(CosmosClient client, string databaseName)
     {
@@ -24,7 +27,23 @@ public class CosmosDbService
         _databaseName = databaseName;
     }
 
-    public async Task InitializeAsync()
+    public async Task EnsureInitializedAsync()
+    {
+        if (_initialized) return;
+        await _initLock.WaitAsync();
+        try
+        {
+            if (_initialized) return;
+            await InitializeAsync();
+            _initialized = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    private async Task InitializeAsync()
     {
         // Create database with autoscale throughput
         var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(_databaseName);
