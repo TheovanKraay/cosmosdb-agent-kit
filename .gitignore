@@ -5,3 +5,8 @@ __pycache__/
 # Testing iteration extracted source (keep only zips)
 testing/scenarios/**/iterations/**/ecommerce-order-api/
 testing/scenarios/**/iterations/**/target/
+# Testing-v2 build artifacts
+testing-v2/scenarios/**/iterations/**/bin/
+testing-v2/scenarios/**/iterations/**/obj/
+testing-v2/scenarios/**/iterations/**/target/
+testing-v2/scenarios/**/iterations/*go/server
