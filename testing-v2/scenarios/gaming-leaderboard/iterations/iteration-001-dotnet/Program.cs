@@ -39,13 +39,31 @@ var cosmosClientOptions = new CosmosClientOptions
 
 var cosmosClient = new CosmosClient(cosmosEndpoint, cosmosKey, cosmosClientOptions);
 builder.Services.AddSingleton(cosmosClient);
-
-// Initialize database and containers
-await InitializeCosmosDbAsync(cosmosClient);
-
 builder.Services.AddSingleton(new CosmosDbService(cosmosClient, DatabaseName));
 
 var app = builder.Build();
+
+// Initialize database and containers in background after the server starts listening.
+// This prevents blocking startup and ensures the health endpoint is reachable immediately.
+var dbInitialized = new TaskCompletionSource<bool>();
+app.Lifetime.ApplicationStarted.Register(() =>
+{
+    _ = Task.Run(async () =>
+    {
+        try
+        {
+            Console.WriteLine("Initializing Cosmos DB database and containers...");
+            await InitializeCosmosDbAsync(cosmosClient);
+            Console.WriteLine("Cosmos DB initialization complete.");
+            dbInitialized.TrySetResult(true);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"Cosmos DB initialization failed: {ex.Message}");
+            dbInitialized.TrySetException(ex);
+        }
+    });
+});
 
 // Health endpoint
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
