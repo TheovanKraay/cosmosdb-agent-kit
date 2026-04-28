@@ -53,7 +53,7 @@ pub async fn create_player(
         display_name: display_name.clone(),
         region: region.clone(),
         total_games: 0,
-        best_score: 0.0,
+        best_score: 0,
         average_score: 0.0,
         doc_type: "player".to_string(),
         etag: None,
@@ -82,7 +82,7 @@ pub async fn create_player(
         display_name,
         region,
         total_games: 0,
-        best_score: 0.0,
+        best_score: 0,
         average_score: 0.0,
     };
 
@@ -142,7 +142,7 @@ pub async fn update_player(
         doc.region = region.clone();
     }
 
-    doc.etag = None; // Don't send etag back as field
+    doc.etag = None;
 
     let replace_resp = db
         .replace_document("players", &player_id, &player_id, &doc, None)
@@ -171,16 +171,14 @@ pub async fn update_player(
                 .delete_document("leaderboards", &player_id, &old_region)
                 .await;
             // Create new regional entry
-            if doc.best_score > 0.0 || doc.total_games > 0 {
-                update_leaderboard_entry(
-                    &db,
-                    &player_id,
-                    &doc.display_name,
-                    doc.best_score,
-                    &doc.region,
-                )
-                .await;
-            }
+            update_leaderboard_entry(
+                &db,
+                &player_id,
+                &doc.display_name,
+                doc.best_score,
+                &doc.region,
+            )
+            .await;
         } else if name_changed {
             // Update regional entry with new name
             update_leaderboard_entry(
@@ -261,6 +259,10 @@ pub async fn create_score(
     let body = body.ok_or_else(|| AppError::BadRequest("Request body is required".into()))?;
     let body = body.0;
 
+    if body.is_null() || (body.is_object() && body.as_object().unwrap().is_empty()) {
+        return Err(AppError::BadRequest("Request body cannot be empty".into()));
+    }
+
     let req: CreateScoreRequest =
         serde_json::from_value(body).map_err(|e| AppError::BadRequest(e.to_string()))?;
 
@@ -273,12 +275,20 @@ pub async fn create_score(
         .score
         .ok_or_else(|| AppError::BadRequest("score is required".into()))?;
 
-    let score: f64 = match &score_val {
-        Value::Number(n) => n.as_f64().ok_or_else(|| AppError::BadRequest("Invalid score".into()))?,
+    let score: i64 = match &score_val {
+        Value::Number(n) => {
+            if let Some(i) = n.as_i64() {
+                i
+            } else if let Some(f) = n.as_f64() {
+                f as i64
+            } else {
+                return Err(AppError::BadRequest("Invalid score".into()));
+            }
+        }
         _ => return Err(AppError::BadRequest("score must be a number".into())),
     };
 
-    if score < 0.0 {
+    if score < 0 {
         return Err(AppError::BadRequest("score must not be negative".into()));
     }
 
@@ -346,7 +356,7 @@ pub async fn create_score(
 
         let new_total = player.total_games + 1;
         let new_avg =
-            (player.average_score * player.total_games as f64 + score) / new_total as f64;
+            (player.average_score * player.total_games as f64 + score as f64) / new_total as f64;
         let new_best = if score > player.best_score {
             score
         } else {
@@ -424,7 +434,7 @@ async fn update_leaderboard_entry(
     db: &CosmosDbClient,
     player_id: &str,
     display_name: &str,
-    score: f64,
+    score: i64,
     region: &str,
 ) {
     let entry = crate::models::LeaderboardDoc {
@@ -501,7 +511,7 @@ pub async fn get_regional_leaderboard(
 async fn get_leaderboard_by_region(
     db: &CosmosDbClient,
     region: &str,
-    top: u64,
+    top: i64,
 ) -> Result<impl IntoResponse, AppError> {
     let docs = db
         .query_documents(
@@ -520,9 +530,9 @@ async fn get_leaderboard_by_region(
         .map(|(i, v)| {
             let player_id = v["playerId"].as_str().unwrap_or("").to_string();
             let display_name = v["displayName"].as_str().unwrap_or("").to_string();
-            let score = v["score"].as_f64().unwrap_or(0.0);
+            let score = v["score"].as_i64().unwrap_or(0);
             LeaderboardEntry {
-                rank: (i + 1) as u64,
+                rank: (i + 1) as i64,
                 player_id,
                 display_name,
                 score,
@@ -565,9 +575,9 @@ pub async fn get_player_rank(
         .map(|(i, v)| {
             let pid = v["playerId"].as_str().unwrap_or("").to_string();
             let dn = v["displayName"].as_str().unwrap_or("").to_string();
-            let sc = v["score"].as_f64().unwrap_or(0.0);
+            let sc = v["score"].as_i64().unwrap_or(0);
             LeaderboardEntry {
-                rank: (i + 1) as u64,
+                rank: (i + 1) as i64,
                 player_id: pid,
                 display_name: dn,
                 score: sc,
@@ -576,17 +586,17 @@ pub async fn get_player_rank(
         .collect();
 
     // Find player in leaderboard
-    let player_entry = entries.iter().find(|e| e.player_id == player_id);
+    let player_pos = entries.iter().position(|e| e.player_id == player_id);
 
-    match player_entry {
-        Some(entry) => {
+    match player_pos {
+        Some(idx) => {
+            let entry = &entries[idx];
             let rank = entry.rank;
             let score = entry.score;
 
-            // Get neighbors (2 above, 2 below)
-            let idx = (rank - 1) as usize;
-            let start = if idx >= 2 { idx - 2 } else { 0 };
-            let end = std::cmp::min(idx + 3, entries.len());
+            // Get neighbors (±10 positions)
+            let start = if idx >= 10 { idx - 10 } else { 0 };
+            let end = std::cmp::min(idx + 11, entries.len());
             let neighbors: Vec<LeaderboardEntry> = entries[start..end]
                 .iter()
                 .filter(|e| e.player_id != player_id)
@@ -601,13 +611,11 @@ pub async fn get_player_rank(
             }))
         }
         None => {
-            // Player exists but has no scores yet
-            Ok(Json(RankResponse {
-                player_id,
-                rank: 0,
-                score: 0.0,
-                neighbors: vec![],
-            }))
+            // Player exists but has no scores - return 404
+            Err(AppError::NotFound(format!(
+                "Player {} has no scores",
+                player_id
+            )))
         }
     }
 }

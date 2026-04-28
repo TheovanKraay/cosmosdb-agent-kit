@@ -8,8 +8,8 @@ pub struct PlayerDoc {
     pub player_id: String,
     pub display_name: String,
     pub region: String,
-    pub total_games: u64,
-    pub best_score: f64,
+    pub total_games: i64,
+    pub best_score: i64,
     pub average_score: f64,
     #[serde(rename = "type")]
     pub doc_type: String,
@@ -24,8 +24,8 @@ pub struct PlayerResponse {
     pub player_id: String,
     pub display_name: String,
     pub region: String,
-    pub total_games: u64,
-    pub best_score: f64,
+    pub total_games: i64,
+    pub best_score: i64,
     pub average_score: f64,
 }
 
@@ -63,7 +63,7 @@ pub struct UpdatePlayerRequest {
 pub struct ScoreDoc {
     pub id: String,
     pub player_id: String,
-    pub score: f64,
+    pub score: i64,
     pub game_mode: String,
     pub timestamp: String,
     #[serde(rename = "type")]
@@ -75,7 +75,7 @@ pub struct ScoreDoc {
 pub struct ScoreResponse {
     pub score_id: String,
     pub player_id: String,
-    pub score: f64,
+    pub score: i64,
     pub game_mode: String,
     pub timestamp: String,
 }
@@ -105,7 +105,7 @@ pub struct CreateScoreRequest {
 pub struct ScoreCreateResponse {
     pub score_id: String,
     pub player_id: String,
-    pub score: f64,
+    pub score: i64,
 }
 
 // Leaderboard document stored in Cosmos DB
@@ -116,7 +116,7 @@ pub struct LeaderboardDoc {
     pub region: String,
     pub player_id: String,
     pub display_name: String,
-    pub score: f64,
+    pub score: i64,
     #[serde(rename = "type")]
     pub doc_type: String,
 }
@@ -124,27 +124,27 @@ pub struct LeaderboardDoc {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LeaderboardEntry {
-    pub rank: u64,
+    pub rank: i64,
     pub player_id: String,
     pub display_name: String,
-    pub score: f64,
+    pub score: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RankResponse {
     pub player_id: String,
-    pub rank: u64,
-    pub score: f64,
+    pub rank: i64,
+    pub score: i64,
     pub neighbors: Vec<LeaderboardEntry>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct LimitQuery {
-    pub limit: Option<u64>,
+    pub limit: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct TopQuery {
-    pub top: Option<u64>,
+    pub top: Option<i64>,
 }
