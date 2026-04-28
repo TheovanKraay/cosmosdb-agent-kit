@@ -366,8 +366,6 @@ pub async fn create_score(
         player.total_games = new_total;
         player.average_score = new_avg;
         player.best_score = new_best;
-
-        let player_etag_for_replace = player.etag.clone();
         player.etag = None;
 
         let replace_resp = db
@@ -376,7 +374,7 @@ pub async fn create_score(
                 &player_id,
                 &player_id,
                 &player,
-                etag.as_deref().or(player_etag_for_replace.as_deref()),
+                etag.as_deref(),
             )
             .await
             .map_err(|e| AppError::Internal(e))?;
@@ -573,14 +571,14 @@ pub async fn get_player_rank(
         .iter()
         .enumerate()
         .map(|(i, v)| {
-            let pid = v["playerId"].as_str().unwrap_or("").to_string();
-            let dn = v["displayName"].as_str().unwrap_or("").to_string();
-            let sc = v["score"].as_i64().unwrap_or(0);
+            let player_id = v["playerId"].as_str().unwrap_or("").to_string();
+            let display_name = v["displayName"].as_str().unwrap_or("").to_string();
+            let score = v["score"].as_i64().unwrap_or(0);
             LeaderboardEntry {
                 rank: (i + 1) as i64,
-                player_id: pid,
-                display_name: dn,
-                score: sc,
+                player_id,
+                display_name,
+                score,
             }
         })
         .collect();
