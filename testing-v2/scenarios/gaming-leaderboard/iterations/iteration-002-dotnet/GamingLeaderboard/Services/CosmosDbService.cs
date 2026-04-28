@@ -13,6 +13,8 @@ public class CosmosDbService
     private Container? _scoresContainer;
     private Container? _leaderboardsContainer;
     private readonly ILogger<CosmosDbService> _logger;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private bool _initialized;
 
     public const string PlayersContainerName = "players";
     public const string ScoresContainerName = "scores";
@@ -43,73 +45,101 @@ public class CosmosDbService
 
     public CosmosClient Client => _client;
 
+    /// <summary>
+    /// Initialize database and containers. Safe to call multiple times —
+    /// uses a semaphore to ensure only one initialization runs.
+    /// </summary>
     public async Task InitializeAsync()
     {
-        _logger.LogInformation("Initializing Cosmos DB...");
+        if (_initialized) return;
 
-        var dbResponse = await _client.CreateDatabaseIfNotExistsAsync(
-            _databaseName,
-            ThroughputProperties.CreateAutoscaleThroughput(1000));
-        _database = dbResponse.Database;
-
-        // Players container: partitioned by /playerId
-        var playersProps = new ContainerProperties(PlayersContainerName, "/playerId")
+        await _initLock.WaitAsync();
+        try
         {
-            IndexingPolicy = new IndexingPolicy
-            {
-                IncludedPaths = { new IncludedPath { Path = "/playerId/?" }, new IncludedPath { Path = "/region/?" } },
-                ExcludedPaths = { new ExcludedPath { Path = "/*" } }
-            }
-        };
-        var playersResponse = await _database.CreateContainerIfNotExistsAsync(playersProps);
-        _playersContainer = playersResponse.Container;
+            if (_initialized) return;
 
-        // Scores container: partitioned by /playerId
-        var scoresProps = new ContainerProperties(ScoresContainerName, "/playerId")
-        {
-            IndexingPolicy = new IndexingPolicy
+            _logger.LogInformation("Initializing Cosmos DB...");
+
+            var dbResponse = await _client.CreateDatabaseIfNotExistsAsync(
+                _databaseName,
+                ThroughputProperties.CreateAutoscaleThroughput(1000));
+            _database = dbResponse.Database;
+
+            // Players container: partitioned by /playerId
+            var playersProps = new ContainerProperties(PlayersContainerName, "/playerId")
             {
-                IncludedPaths =
+                IndexingPolicy = new IndexingPolicy
                 {
-                    new IncludedPath { Path = "/playerId/?" },
-                    new IncludedPath { Path = "/timestamp/?" },
-                    new IncludedPath { Path = "/score/?" }
-                },
-                ExcludedPaths = { new ExcludedPath { Path = "/*" } }
-            }
-        };
-        scoresProps.IndexingPolicy.CompositeIndexes.Add(new System.Collections.ObjectModel.Collection<CompositePath>
-        {
-            new CompositePath { Path = "/timestamp", Order = CompositePathSortOrder.Descending },
-            new CompositePath { Path = "/score", Order = CompositePathSortOrder.Descending }
-        });
-        var scoresResponse = await _database.CreateContainerIfNotExistsAsync(scoresProps);
-        _scoresContainer = scoresResponse.Container;
+                    IncludedPaths = { new IncludedPath { Path = "/playerId/?" }, new IncludedPath { Path = "/region/?" } },
+                    ExcludedPaths = { new ExcludedPath { Path = "/*" } }
+                }
+            };
+            var playersResponse = await _database.CreateContainerIfNotExistsAsync(playersProps);
+            _playersContainer = playersResponse.Container;
 
-        // Leaderboards container: partitioned by /leaderboardKey (synthetic key)
-        var lbProps = new ContainerProperties(LeaderboardsContainerName, "/leaderboardKey")
-        {
-            IndexingPolicy = new IndexingPolicy
+            // Scores container: partitioned by /playerId
+            var scoresProps = new ContainerProperties(ScoresContainerName, "/playerId")
             {
-                IncludedPaths =
+                IndexingPolicy = new IndexingPolicy
                 {
-                    new IncludedPath { Path = "/leaderboardKey/?" },
-                    new IncludedPath { Path = "/bestScore/?" },
-                    new IncludedPath { Path = "/displayName/?" },
-                    new IncludedPath { Path = "/playerId/?" }
-                },
-                ExcludedPaths = { new ExcludedPath { Path = "/*" } }
-            }
-        };
-        lbProps.IndexingPolicy.CompositeIndexes.Add(new System.Collections.ObjectModel.Collection<CompositePath>
-        {
-            new CompositePath { Path = "/bestScore", Order = CompositePathSortOrder.Descending },
-            new CompositePath { Path = "/displayName", Order = CompositePathSortOrder.Ascending }
-        });
-        var lbResponse = await _database.CreateContainerIfNotExistsAsync(lbProps);
-        _leaderboardsContainer = lbResponse.Container;
+                    IncludedPaths =
+                    {
+                        new IncludedPath { Path = "/playerId/?" },
+                        new IncludedPath { Path = "/timestamp/?" },
+                        new IncludedPath { Path = "/score/?" }
+                    },
+                    ExcludedPaths = { new ExcludedPath { Path = "/*" } }
+                }
+            };
+            scoresProps.IndexingPolicy.CompositeIndexes.Add(new System.Collections.ObjectModel.Collection<CompositePath>
+            {
+                new CompositePath { Path = "/timestamp", Order = CompositePathSortOrder.Descending },
+                new CompositePath { Path = "/score", Order = CompositePathSortOrder.Descending }
+            });
+            var scoresResponse = await _database.CreateContainerIfNotExistsAsync(scoresProps);
+            _scoresContainer = scoresResponse.Container;
 
-        _logger.LogInformation("Cosmos DB initialization complete.");
+            // Leaderboards container: partitioned by /leaderboardKey (synthetic key)
+            var lbProps = new ContainerProperties(LeaderboardsContainerName, "/leaderboardKey")
+            {
+                IndexingPolicy = new IndexingPolicy
+                {
+                    IncludedPaths =
+                    {
+                        new IncludedPath { Path = "/leaderboardKey/?" },
+                        new IncludedPath { Path = "/bestScore/?" },
+                        new IncludedPath { Path = "/displayName/?" },
+                        new IncludedPath { Path = "/playerId/?" }
+                    },
+                    ExcludedPaths = { new ExcludedPath { Path = "/*" } }
+                }
+            };
+            lbProps.IndexingPolicy.CompositeIndexes.Add(new System.Collections.ObjectModel.Collection<CompositePath>
+            {
+                new CompositePath { Path = "/bestScore", Order = CompositePathSortOrder.Descending },
+                new CompositePath { Path = "/displayName", Order = CompositePathSortOrder.Ascending }
+            });
+            var lbResponse = await _database.CreateContainerIfNotExistsAsync(lbProps);
+            _leaderboardsContainer = lbResponse.Container;
+
+            _initialized = true;
+            _logger.LogInformation("Cosmos DB initialization complete.");
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Ensure initialization has completed. Call this before accessing containers.
+    /// </summary>
+    public async Task EnsureInitializedAsync()
+    {
+        if (!_initialized)
+        {
+            await InitializeAsync();
+        }
     }
 
     public Container PlayersContainer =>

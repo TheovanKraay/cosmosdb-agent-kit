@@ -29,6 +29,8 @@ public class LeaderboardsController : ControllerBase
             return Ok(new List<LeaderboardEntryResponse>());
         }
 
+        await _cosmos.EnsureInitializedAsync();
+
         var query = new QueryDefinition(
             "SELECT * FROM c ORDER BY c.bestScore DESC, c.displayName ASC OFFSET 0 LIMIT @top")
             .WithParameter("@top", top);
@@ -70,6 +72,8 @@ public class LeaderboardsController : ControllerBase
         {
             return Ok(new List<LeaderboardEntryResponse>());
         }
+
+        await _cosmos.EnsureInitializedAsync();
 
         var partitionKey = $"{region}_all-time";
 

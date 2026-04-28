@@ -29,6 +29,8 @@ public class PlayersController : ControllerBase
             return BadRequest(new { error = "playerId, displayName, and region are required" });
         }
 
+        await _cosmos.EnsureInitializedAsync();
+
         var player = new Player
         {
             Id = request.PlayerId,
@@ -59,6 +61,7 @@ public class PlayersController : ControllerBase
     [HttpGet("{playerId}")]
     public async Task<IActionResult> GetPlayer(string playerId)
     {
+        await _cosmos.EnsureInitializedAsync();
         try
         {
             var response = await _cosmos.PlayersContainer.ReadItemAsync<Player>(
@@ -81,6 +84,7 @@ public class PlayersController : ControllerBase
         }
 
         const int maxRetries = 5;
+        await _cosmos.EnsureInitializedAsync();
         for (int attempt = 0; attempt < maxRetries; attempt++)
         {
             try
@@ -146,6 +150,7 @@ public class PlayersController : ControllerBase
     [HttpDelete("{playerId}")]
     public async Task<IActionResult> DeletePlayer(string playerId)
     {
+        await _cosmos.EnsureInitializedAsync();
         try
         {
             // Verify player exists first
@@ -187,6 +192,7 @@ public class PlayersController : ControllerBase
     [HttpGet("{playerId}/scores")]
     public async Task<IActionResult> GetPlayerScores(string playerId, [FromQuery] int limit = 10)
     {
+        await _cosmos.EnsureInitializedAsync();
         // Check player exists
         try
         {
@@ -232,6 +238,7 @@ public class PlayersController : ControllerBase
     [HttpGet("{playerId}/rank")]
     public async Task<IActionResult> GetPlayerRank(string playerId)
     {
+        await _cosmos.EnsureInitializedAsync();
         // Check player exists and has scores
         Player player;
         try

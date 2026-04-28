@@ -34,6 +34,8 @@ public class ScoresController : ControllerBase
             return BadRequest(new { error = "score must be a positive integer" });
         }
 
+        await _cosmos.EnsureInitializedAsync();
+
         // Verify player exists
         Player player;
         string etag;
