@@ -130,17 +130,21 @@ func initCosmos() error {
 		key = "C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw=="
 	}
 
-	// Trust self-signed certs for emulator
-	http.DefaultTransport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	// Create custom HTTP client that trusts self-signed certs for emulator
+	customTransport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 - needed for Cosmos DB emulator
 	}
+	customHTTPClient := &http.Client{Transport: customTransport}
 
 	cred, err := azcosmos.NewKeyCredential(key)
 	if err != nil {
 		return fmt.Errorf("failed to create credential: %w", err)
 	}
 
-	client, err := azcosmos.NewClientWithKey(endpoint, cred, nil)
+	opts := &azcosmos.ClientOptions{}
+	opts.Transport = customHTTPClient
+
+	client, err := azcosmos.NewClientWithKey(endpoint, cred, opts)
 	if err != nil {
 		return fmt.Errorf("failed to create cosmos client: %w", err)
 	}
