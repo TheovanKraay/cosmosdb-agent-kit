@@ -415,10 +415,6 @@ func isPreconditionFailed(err error) bool {
 	return false
 }
 
-func strPtr(s string) *string {
-	return &s
-}
-
 func leaderboardKeyForRegion(region string) string {
 	return "regional_" + strings.TrimSpace(region)
 }

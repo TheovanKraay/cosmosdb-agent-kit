@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -284,12 +283,6 @@ func (h *Handlers) SubmitScore(c *gin.Context) {
 		updatedPlayer, err = h.db.ReplacePlayer(ctx, player, player.ETag)
 		if err != nil {
 			if isPreconditionFailed(err) {
-				// Re-read and retry — reset player for next iteration
-				player, err = h.db.GetPlayer(ctx, req.PlayerID)
-				if err != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-					return
-				}
 				continue
 			}
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -463,12 +456,11 @@ func (h *Handlers) GetPlayerRank(c *gin.Context) {
 	}
 
 	neighborResponses := make([]LeaderboardResponse, 0, len(neighbors))
-	for i, n := range neighbors {
+	for _, n := range neighbors {
 		// Determine rank of each neighbor based on their position in the sorted list
 		nAbove, _ := h.db.CountPlayersAbove(ctx, "global", n.Score)
 		nSame, _ := h.db.CountPlayersWithSameScoreAndLowerName(ctx, "global", n.Score, n.DisplayName)
 		nRank := nAbove + nSame + 1
-		_ = i
 		neighborResponses = append(neighborResponses, LeaderboardResponse{
 			Rank:        nRank,
 			PlayerID:    n.PlayerID,
@@ -527,9 +519,4 @@ func toLeaderboardResponses(entries []LeaderboardEntry) []LeaderboardResponse {
 		})
 	}
 	return result
-}
-
-func init() {
-	// Ensure fmt is used
-	_ = fmt.Sprintf
 }
