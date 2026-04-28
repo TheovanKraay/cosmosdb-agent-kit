@@ -104,10 +104,16 @@ func (db *CosmosDB) EnsureDatabase(ctx context.Context) error {
 
 func (db *CosmosDB) createContainer(ctx context.Context, dbClient *azcosmos.DatabaseClient, name, partitionKey string, compositeIndexes [][]azcosmos.CompositeIndex) error {
 	indexingPolicy := azcosmos.IndexingPolicy{
-		Automatic:     true,
-		IndexingMode:  azcosmos.IndexingModeConsistent,
-		IncludedPaths: []azcosmos.IncludedPath{{Path: "/*"}},
-		ExcludedPaths: []azcosmos.ExcludedPath{{Path: "/_etag/?"}},
+		Automatic:    true,
+		IndexingMode: azcosmos.IndexingModeConsistent,
+		IncludedPaths: []azcosmos.IncludedPath{
+			{Path: "/*"},
+		},
+		ExcludedPaths: []azcosmos.ExcludedPath{
+			{Path: "/\"_etag\"/?"},
+			{Path: "/type/?"},
+			{Path: "/schemaVersion/?"},
+		},
 	}
 	if compositeIndexes != nil {
 		indexingPolicy.CompositeIndexes = compositeIndexes

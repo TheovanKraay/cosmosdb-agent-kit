@@ -5,3 +5,4 @@ __pycache__/
 # Testing iteration extracted source (keep only zips)
 testing/scenarios/**/iterations/**/ecommerce-order-api/
 testing/scenarios/**/iterations/**/target/
+testing-v2/scenarios/**/iterations/**/*.exe

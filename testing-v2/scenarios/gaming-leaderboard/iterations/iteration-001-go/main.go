@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"log"
 	"net/http"
@@ -25,7 +26,7 @@ func main() {
 		log.Fatalf("Failed to create Cosmos DB client: %v", err)
 	}
 
-	if err := db.EnsureDatabase(nil); err != nil {
+	if err := db.EnsureDatabase(context.Background()); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 
