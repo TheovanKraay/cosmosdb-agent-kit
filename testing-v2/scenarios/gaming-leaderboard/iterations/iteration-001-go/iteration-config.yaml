@@ -1,0 +1,9 @@
+scenario: gaming-leaderboard
+iteration: "001"
+language: go
+framework: gin
+runtime: go1.21
+port: 8080
+description: >
+  Go implementation of the gaming leaderboard scenario using Gin framework
+  and Azure Cosmos DB Go SDK with gateway connection mode for emulator compatibility.
