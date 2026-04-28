@@ -1,0 +1,7 @@
+language: go
+database: gaming-leaderboard
+port: 8080
+health: /health
+build: go build -o server .
+run: ./server
+skills_loaded: true
