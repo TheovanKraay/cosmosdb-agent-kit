@@ -9,6 +9,11 @@ This is the high-level log. For detailed per-iteration evaluation notes (test re
 
 ---
 
+## 2026-04-28 — iteration-001-rust automated evaluation (skills)
+
+- **Scenario**: gaming-leaderboard, **Language**: rust
+- **Result**: 38/94 tests passed (40.4%), score 3/10
+
 ## 2026-04-18 — README updated to document testing framework
 
 - Expanded `README.md` with a section describing the testing framework and how evaluations flow back into the skill.

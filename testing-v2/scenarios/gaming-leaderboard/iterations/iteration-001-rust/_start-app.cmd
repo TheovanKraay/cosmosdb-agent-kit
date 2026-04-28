@@ -1,0 +1,2 @@
+@echo off
+.\target\release\gaming-leaderboard.exe > "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-rust\app-output.log" 2> "D:\a\cosmosdb-agent-kit\cosmosdb-agent-kit\testing-v2\scenarios\gaming-leaderboard\iterations\iteration-001-rust\app-error.log"

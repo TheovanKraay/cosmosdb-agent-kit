@@ -1294,3 +1294,40 @@ After completing the iteration successfully, user provided GitHub samples showin
   - Throughput & scaling (5 rules)
   - Global distribution (6 rules)
   - Monitoring & diagnostics (5 rules)
+
+#### 2026-04-28: iteration-001-rust - Gaming Leaderboard (Rust) [skills loaded]
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: iteration-001-rust
+- **Skills loaded**: Yes
+- **Result**: FAILED -- 38/94 tests passed (40.4%)
+- **Score**: 3/10
+
+**Results by Category**:
+- api_contract: 14 passed, 31 failed, 0 skipped
+- build_startup: 2 passed, 0 failed, 0 skipped
+- cosmos_infrastructure: 10 passed, 2 failed, 1 skipped
+- data_integrity: 5 passed, 0 failed, 0 skipped
+- robustness: 9 passed, 22 failed, 0 skipped
+
+**Issues Encountered**:
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGetPlayer::test_get_existing_player** -- AssertionError: GET /api/players/player-001 should return 200, got 404
+assert 404 == 200
+ +  where 4
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGetPlayer::test_get_player_has_required_fields** -- assert 404 == 200
+ +  where 404 = <Response [404]>.status_code
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGetPlayer::test_get_player_stats_updated_after_scores** -- assert 404 == 200
+ +  where 404 = <Response [404]>.status_code
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGlobalLeaderboard::test_global_leaderboard_returns_200** -- AssertionError: GET /api/leaderboards/global should return 200, got 500
+assert 500 == 200
+ +  where 
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGlobalLeaderboard::test_global_leaderboard_returns_array** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGlobalLeaderboard::test_global_leaderboard_entries_have_required_fields** -- KeyError: 0
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGlobalLeaderboard::test_global_leaderboard_sorted_descending** -- TypeError: string indices must be integers, not 'str'
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGlobalLeaderboard::test_global_leaderboard_ranks_sequential** -- TypeError: string indices must be integers, not 'str'
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGlobalLeaderboard::test_global_leaderboard_top_player_is_highest_scorer** -- KeyError: 0
+1. **testing-v2.scenarios.gaming-leaderboard.tests.test_api_contract.TestGlobalLeaderboard::test_global_leaderboard_respects_top_parameter** -- assert 500 == 200
+ +  where 500 = <Response [500]>.status_code
+
+**Test Results**: 38 passed, 56 failed out of 94
