@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "build_command": "go build -o server.exe .",
+  "stdout_tail": "",
+  "stderr_tail": "go: downloading go1.25.0 (windows/amd64)\ngo: downloading github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.1\ngo: downloading github.com/Azure/azure-sdk-for-go/sdk/data/azcosmos v1.4.2\ngo: downloading github.com/gin-gonic/gin v1.12.0\ngo: downloading github.com/google/uuid v1.6.0\ngo: downloading github.com/Azure/azure-sdk-for-go v68.0.0+incompatible\ngo: downloading github.com/gin-contrib/sse v1.1.0\ngo: downloading github.com/mattn/go-isatty v0.0.20\ngo: downloading github.com/quic-go/quic-go v0.59.0\ngo: downloading golang.org/x/net v0.53.0\ngo: downloading github.com/go-playground/validator/v10 v10.30.1\ngo: downloading github.com/goccy/go-yaml v1.19.2\ngo: downloading github.com/pelletier/go-toml/v2 v2.2.4\ngo: downloading github.com/ugorji/go/codec v1.3.1\ngo: downloading go.mongodb.org/mongo-driver/v2 v2.5.0\ngo: downloading google.golang.org/protobuf v1.36.10\ngo: downloading github.com/quic-go/qpack v0.6.0\ngo: downloading github.com/gabriel-vasile/mimetype v1.4.12\ngo: downloading github.com/go-playground/universal-translator v0.18.1\ngo: downloading github.com/leodido/go-urn v1.4.0\ngo: downloading golang.org/x/crypto v0.50.0\ngo: downloading golang.org/x/text v0.36.0\ngo: downloading golang.org/x/sys v0.43.0\ngo: downloading github.com/go-playground/locales v0.14.1\ngo: downloading github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0",
+  "succeeded": true
+}

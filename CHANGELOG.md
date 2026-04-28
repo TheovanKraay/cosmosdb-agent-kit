@@ -9,6 +9,11 @@ This is the high-level log. For detailed per-iteration evaluation notes (test re
 
 ---
 
+## 2026-04-28 — iteration-001-go automated evaluation (skills)
+
+- **Scenario**: gaming-leaderboard, **Language**: go
+- **Result**: 94/94 tests passed (100.0%), score 10/10
+
 ## 2026-04-18 — README updated to document testing framework
 
 - Expanded `README.md` with a section describing the testing framework and how evaluations flow back into the skill.
