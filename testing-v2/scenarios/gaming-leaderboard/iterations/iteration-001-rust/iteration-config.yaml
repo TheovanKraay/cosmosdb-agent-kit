@@ -1,0 +1,7 @@
+language: rust
+database: gaming-leaderboard
+port: 8080
+health: /health
+build: cargo build --release
+run: ./target/release/gaming-leaderboard
+skills_loaded: true
