@@ -132,18 +132,40 @@ impl CosmosDbClient {
             headers.insert("x-ms-version", HeaderValue::from_static("2018-12-31"));
             headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
+            let mut body = json!({
+                "id": name,
+                "partitionKey": {
+                    "paths": [pk],
+                    "kind": "Hash",
+                    "version": 2
+                }
+            });
+
+            // Add composite indexes to leaderboards container for ORDER BY score DESC, displayName ASC
+            if name == "leaderboards" {
+                body["indexingPolicy"] = json!({
+                    "indexingMode": "consistent",
+                    "automatic": true,
+                    "includedPaths": [{"path": "/*"}],
+                    "excludedPaths": [{"path": "/\"_etag\"/?"}],
+                    "compositeIndexes": [
+                        [
+                            {"path": "/score", "order": "descending"},
+                            {"path": "/displayName", "order": "ascending"}
+                        ],
+                        [
+                            {"path": "/score", "order": "descending"},
+                            {"path": "/timestamp", "order": "ascending"}
+                        ]
+                    ]
+                });
+            }
+
             let _ = self
                 .client
                 .post(format!("{}/dbs/{}/colls", self.endpoint, self.database))
                 .headers(headers)
-                .json(&json!({
-                    "id": name,
-                    "partitionKey": {
-                        "paths": [pk],
-                        "kind": "Hash",
-                        "version": 2
-                    }
-                }))
+                .json(&body)
                 .send()
                 .await
                 .map_err(|e| e.to_string())?;

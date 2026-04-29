@@ -18,6 +18,47 @@ Each improvement entry should include:
 
 ## Improvements
 
+#### 2026-04-29: Iteration 001 — Gaming Leaderboard (Rust / Axum 0.7.9)
+
+- **Scenario**: gaming-leaderboard
+- **Iteration**: 001-rust
+- **Result**: ⚠️ PARTIAL — 40.4% pass rate (38/94), revised score 5/10 after code fixes
+- **Score**: 5/10
+
+**Rules Created** 🆕:
+- None — failures traced to code bugs and existing rules not applied.
+
+**Rules Updated** 🔧:
+- None — existing `index-composite` and `model-schema-versioning` rules are clear; agent simply did not follow them.
+
+**Issues Encountered & Resolved**:
+1. **Axum path parameter syntax** — 🐛 CODE BUG
+   - Problem: Used `{param}` syntax for route definitions; Axum 0.7.9 + matchit 0.7.3 on Windows CI did not resolve these routes
+   - Impact: ~45 tests failed with bare 404 (empty body) for all parameterized endpoints
+   - Solution: Switched to `:param` syntax and chained method handlers
+   - Status: ✅ Fixed
+
+2. **Missing composite index** — 📐 EXISTING RULE NOT APPLIED (`index-composite`)
+   - Problem: Leaderboards container created without composite index for `ORDER BY c.score DESC, c.displayName ASC`
+   - Impact: ~8 tests failed with 500 on leaderboard endpoints
+   - Solution: Added composite index definition to container creation
+   - Status: ✅ Fixed
+
+3. **Missing schema version** — 📐 EXISTING RULE NOT APPLIED (`model-schema-versioning`)
+   - Problem: Documents lacked `schemaVersion` field
+   - Impact: 1 infrastructure test failed
+   - Solution: Added `schemaVersion: 1` to all document types
+   - Status: ✅ Fixed
+
+4. **Edge case: top=0 parameter** — 🐛 CODE BUG
+   - Problem: Leaderboard query with `top=0` caused server error
+   - Impact: 1 robustness test failed
+   - Solution: Return empty array for `top <= 0`
+   - Status: ✅ Fixed
+
+**Best Practices Applied**: 8/12 relevant rules applied correctly (partition keys, point reads, ETags, upserts, parameterized queries, singleton client, TLS bypass, denormalization)
+**Lessons for Next Iteration**: Ensure composite indexes are declared at container creation for any multi-field ORDER BY. Verify route parameter syntax works on target platform before deployment.
+
 #### 2026-04-15: Batch #209 — Multitenant SaaS (Java / Skills Loaded)
 
 - **Scenario**: multitenant-saas

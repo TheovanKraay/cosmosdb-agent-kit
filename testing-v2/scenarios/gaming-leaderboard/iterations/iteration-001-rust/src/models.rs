@@ -13,6 +13,7 @@ pub struct PlayerDoc {
     pub average_score: f64,
     #[serde(rename = "type")]
     pub doc_type: String,
+    pub schema_version: i64,
     #[serde(rename = "_etag", skip_serializing_if = "Option::is_none")]
     pub etag: Option<String>,
 }
@@ -68,6 +69,7 @@ pub struct ScoreDoc {
     pub timestamp: String,
     #[serde(rename = "type")]
     pub doc_type: String,
+    pub schema_version: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -119,6 +121,7 @@ pub struct LeaderboardDoc {
     pub score: i64,
     #[serde(rename = "type")]
     pub doc_type: String,
+    pub schema_version: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

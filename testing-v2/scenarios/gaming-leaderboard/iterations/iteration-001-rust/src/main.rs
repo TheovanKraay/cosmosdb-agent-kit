@@ -4,7 +4,7 @@ mod handlers;
 mod models;
 
 use axum::{
-    routing::{delete, get, patch, post},
+    routing::{get, post},
     Router,
 };
 use std::sync::Arc;
@@ -37,12 +37,15 @@ async fn main() {
     let app = Router::new()
         .route("/health", get(handlers::health))
         .route("/api/players", post(handlers::create_player))
-        .route("/api/players/{playerId}", get(handlers::get_player))
-        .route("/api/players/{playerId}", patch(handlers::update_player))
-        .route("/api/players/{playerId}", delete(handlers::delete_player))
+        .route(
+            "/api/players/:playerId",
+            get(handlers::get_player)
+                .patch(handlers::update_player)
+                .delete(handlers::delete_player),
+        )
         .route("/api/scores", post(handlers::create_score))
         .route(
-            "/api/players/{playerId}/scores",
+            "/api/players/:playerId/scores",
             get(handlers::get_player_scores),
         )
         .route(
@@ -50,11 +53,11 @@ async fn main() {
             get(handlers::get_global_leaderboard),
         )
         .route(
-            "/api/leaderboards/regional/{region}",
+            "/api/leaderboards/regional/:region",
             get(handlers::get_regional_leaderboard),
         )
         .route(
-            "/api/players/{playerId}/rank",
+            "/api/players/:playerId/rank",
             get(handlers::get_player_rank),
         )
         .with_state(state);

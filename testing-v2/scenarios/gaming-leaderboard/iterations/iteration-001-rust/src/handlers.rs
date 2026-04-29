@@ -56,6 +56,7 @@ pub async fn create_player(
         best_score: 0,
         average_score: 0.0,
         doc_type: "player".to_string(),
+        schema_version: 1,
         etag: None,
     };
 
@@ -324,6 +325,7 @@ pub async fn create_score(
         game_mode,
         timestamp,
         doc_type: "score".to_string(),
+        schema_version: 1,
     };
 
     let create_resp = db
@@ -442,6 +444,7 @@ async fn update_leaderboard_entry(
         display_name: display_name.to_string(),
         score,
         doc_type: "leaderboard".to_string(),
+        schema_version: 1,
     };
 
     let _ = db.upsert_document("leaderboards", region, &entry).await;
@@ -511,6 +514,12 @@ async fn get_leaderboard_by_region(
     region: &str,
     top: i64,
 ) -> Result<impl IntoResponse, AppError> {
+    // Handle edge case: top=0 returns empty array
+    if top <= 0 {
+        let empty: Vec<LeaderboardEntry> = vec![];
+        return Ok(Json(empty));
+    }
+
     let docs = db
         .query_documents(
             "leaderboards",

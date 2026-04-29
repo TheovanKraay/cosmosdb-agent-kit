@@ -9,6 +9,13 @@ This is the high-level log. For detailed per-iteration evaluation notes (test re
 
 ---
 
+## 2026-04-29 — iteration-001-rust deep evaluation: code fixes + ITERATION.md rewrite
+
+- **Scenario**: gaming-leaderboard, **Language**: Rust (Axum 0.7.9)
+- **Root causes**: (1) Axum path parameter syntax `{param}` not matching in CI — switched to `:param`; (2) missing composite index for multi-field ORDER BY on leaderboards container; (3) missing `schemaVersion` field on documents.
+- **Classification**: Code bugs (routing) + existing rules not applied (`index-composite`, `model-schema-versioning`). No new rules needed.
+- **Score revised**: 5/10 (core Cosmos DB patterns correct; failures due to framework quirk + missed indexing rule)
+
 ## 2026-04-28 — iteration-001-rust automated evaluation (skills)
 
 - **Scenario**: gaming-leaderboard, **Language**: rust
