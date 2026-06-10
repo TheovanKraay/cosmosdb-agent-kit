@@ -12,3 +12,6 @@ inputs:
 expected:
   outcomes:
     - type: task_completed
+  output_contains:
+    - "customerId"
+    - "partition key"

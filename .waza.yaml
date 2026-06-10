@@ -9,7 +9,7 @@ files:
   taskGlob: tasks/*.yaml
   taskFileSuffix: .yaml
 defaults:
-  engine: mock
+  engine: copilot-sdk
   model: claude-sonnet-4.6
   timeout: 300
   parallel: false

@@ -11,3 +11,6 @@ inputs:
 expected:
   outcomes:
     - type: task_completed
+  output_contains:
+    - "cross-partition"
+    - "tenantId"
