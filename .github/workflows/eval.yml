@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  copilot: read
+  models: read
 
 jobs:
   eval:
