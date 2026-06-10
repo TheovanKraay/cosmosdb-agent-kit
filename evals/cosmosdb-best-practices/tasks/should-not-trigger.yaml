@@ -11,3 +11,7 @@ inputs:
 expected:
   outcomes:
     - type: task_completed
+  output_not_contains:
+    - "partition key"
+    - "CosmosClient"
+    - "Request Unit"

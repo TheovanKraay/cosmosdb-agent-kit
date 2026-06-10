@@ -24,3 +24,8 @@ inputs:
 expected:
   outcomes:
     - type: task_completed
+  output_contains:
+    - "singleton"
+  output_not_contains:
+    - "looks good"
+    - "no issues"

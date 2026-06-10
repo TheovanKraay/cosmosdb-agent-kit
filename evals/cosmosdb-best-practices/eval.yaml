@@ -9,7 +9,7 @@ config:
   trials_per_task: 1
   timeout_seconds: 300
   parallel: false
-  executor: mock
+  executor: copilot-sdk
   model: claude-sonnet-4.6
 metrics:
   - name: task_completion
@@ -22,5 +22,7 @@ graders:
     config:
       max_tool_calls: 10
       max_duration_ms: 60000
+  - type: text
+    name: content_validation
 tasks:
   - "tasks/*.yaml"
