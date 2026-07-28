@@ -35,8 +35,14 @@ name: SDK Skill-Efficacy Evaluation
 #   AZURE_CLIENT_ID        - client ID of the user-assigned managed identity
 #   AZURE_TENANT_ID        - its Entra tenant ID
 #   AZURE_SUBSCRIPTION_ID  - subscription to select after login
-# The managed identity needs a federated credential whose subject matches this repo's
-# pull_request (and/or branch) — see the identity's "Federated credentials" in Azure.
+# The managed identity needs a federated credential whose subject is this repo's
+# `msbench-eval` environment. Because the evaluate job references that environment,
+# GitHub sets the OIDC token subject to
+#   repo:AzureCosmosDB/cosmosdb-agent-kit:environment:msbench-eval
+# (the environment format takes precedence over pull_request/branch). So the credential
+# MUST use Entity type "Environment" with name `msbench-eval` — a pull_request/branch
+# subject will NOT match and azure/login will fail. See the identity's "Federated
+# credentials" in Azure.
 #
 # NOTE: pull_request_target always uses the workflow file from the DEFAULT branch, so
 # these trigger/auth changes only take effect once merged to main — the label will
