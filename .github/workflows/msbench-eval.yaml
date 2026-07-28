@@ -5,10 +5,26 @@ name: SDK Skill-Efficacy Evaluation
 #      overriding the benchmark / repeat / threshold / model / baseline inputs).
 #   2. pull_request_target, label-gated — when a maintainer adds the `run-msbench`
 #      label to a PR (including PRs from forks), this evaluates the PR's version of
-#      the skill/benchmark. The label IS the security gate: pull_request_target runs
-#      in the BASE repo's context WITH secrets and the OIDC identity, so a maintainer
-#      must review the PR diff (especially scripts/, shared/ces/, and the dataset)
-#      BEFORE adding the label. Never label a PR whose runner/eval code is unreviewed.
+#      the skill/benchmark. A labeled PR also re-evaluates on every new push
+#      (`synchronize`), so the eval always reflects the latest commit.
+#
+# SECURITY BOUNDARY: the label is only a convenience trigger — it is NOT the security
+# gate. pull_request_target runs in the BASE repo's context WITH secrets and the OIDC
+# identity and checks out PR HEAD, so the real gate is the `msbench-eval` deployment
+# environment referenced by the job: it has REQUIRED REVIEWERS, so every run pauses
+# until an authorized reviewer approves it, with a per-run audit trail — independent of
+# who can apply the label (triage can label, but cannot approve the run). Reviewers must
+# inspect the PR diff (especially scripts/, shared/ces/, and the dataset) before
+# approving, since checked-out PR code effectively runs as the managed identity.
+#
+# REPO CONFIG REQUIRED (one-time, in Settings):
+#   - Create an Environment named `msbench-eval` with one or more Required reviewers.
+#   - Recommended (defense-in-depth): scope the run secrets (COPILOT_GITHUB_TOKEN,
+#     AZURE_CLIENT_ID/TENANT_ID/SUBSCRIPTION_ID, COSMOS) to that environment so they
+#     are only exposed after a reviewer approves.
+#   - Keep the managed identity least-privilege: grant it ONLY the roles it needs
+#     (submit to the CES backend + read the internal Artifacts feed), never a
+#     subscription-wide Contributor/Owner role — checked-out PR code runs as it.
 #
 # Authentication is fully unattended via a user-assigned managed identity using
 # GitHub OIDC (federated credentials) — no device-code sign-in and no client secret.
@@ -46,16 +62,17 @@ on:
         description: 'Also run the skill-off baseline and report the efficacy delta (doubles run time)'
         type: boolean
         default: true
-  # Label-gated: a run is created only when the `run-msbench` label is added to a PR
-  # (the job-level `if` enforces the exact label name). Works for fork PRs too.
+  # Label-gated: a run is created when the `run-msbench` label is present on a PR, and
+  # re-created on every subsequent push (`synchronize`) while the label remains. The
+  # job-level `if` enforces the exact label name. The `msbench-eval` environment (with
+  # required reviewers) is what actually authorizes each run. Works for fork PRs too.
   pull_request_target:
-    types: [labeled]
+    types: [labeled, synchronize]
 
 permissions:
   contents: read
   id-token: write   # Required for the OIDC token exchange in azure/login.
   issues: write     # Required if the evaluation fails and an issue must be created.
-  pull-requests: read
 
 # One in-flight eval per PR (or per manual ref); a newer trigger cancels the older.
 concurrency:
@@ -66,23 +83,28 @@ jobs:
   evaluate:
     name: Run skill-efficacy evaluation
     runs-on: ubuntu-latest
-    # Only run when dispatched manually, or when the `run-msbench` label is present
-    # on a PR (a maintainer's review of the diff is the security gate for the
-    # secrets/OIDC identity that pull_request_target exposes).
+    # The security gate: this environment must have required reviewers, so every run
+    # (including fork PRs) pauses until an authorized reviewer approves it — with a
+    # per-run audit trail, independent of who applied the `run-msbench` label.
+    environment: msbench-eval
+    # Run when dispatched manually, or when a PR carries the `run-msbench` label. The
+    # labels-array check (not github.event.label) covers BOTH the `labeled` event and
+    # `synchronize` pushes on an already-labeled PR, so the eval re-runs on new commits.
+    # This only gates job creation; the `msbench-eval` environment enforces approval.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request_target' &&
-       github.event.label.name == 'run-msbench')
+       contains(github.event.pull_request.labels.*.name, 'run-msbench'))
     # Generous cap; doubled to allow the optional skill-off baseline pass.
     timeout-minutes: 120
 
     steps:
       # Check out the code to evaluate. For a labeled PR (including forks) check out
       # the PR HEAD so the eval tests the PR's actual skill/benchmark changes — safe
-      # ONLY because the `run-msbench` label gate requires a maintainer to have
-      # reviewed the diff first. For workflow_dispatch these fall back to the repo/ref
-      # the run was started on. persist-credentials:false avoids leaving a token in
-      # the checked-out (potentially untrusted) working tree.
+      # ONLY because the `msbench-eval` environment requires a reviewer to approve the
+      # run (after inspecting the diff) before this executes. For workflow_dispatch these
+      # fall back to the repo/ref the run was started on. persist-credentials:false avoids
+      # leaving a token in the checked-out (potentially untrusted) working tree.
       - name: Check out repository
         uses: actions/checkout@v4
         with:
