@@ -3,7 +3,7 @@ name: SDK Skill-Efficacy Evaluation
 # Triggered two ways:
 #   1. workflow_dispatch — run it manually from the Actions tab (optionally
 #      overriding the benchmark / repeat / threshold / model / baseline inputs).
-#   2. pull_request_target, label-gated — when a maintainer adds the `run-msbench`
+#   2. pull_request_target, label-gated — when a maintainer adds the `run-skill-eval`
 #      label to a PR (including PRs from forks), this evaluates the PR's version of
 #      the skill/benchmark. A labeled PR also re-evaluates on every new push
 #      (`synchronize`), so the eval always reflects the latest commit.
@@ -68,7 +68,7 @@ on:
         description: 'Also run the skill-off baseline and report the efficacy delta (doubles run time)'
         type: boolean
         default: true
-  # Label-gated: a run is created when the `run-msbench` label is present on a PR, and
+  # Label-gated: a run is created when the `run-skill-eval` label is present on a PR, and
   # re-created on every subsequent push (`synchronize`) while the label remains. The
   # job-level `if` enforces the exact label name. The `msbench-eval` environment (with
   # required reviewers) is what actually authorizes each run. Works for fork PRs too.
@@ -91,16 +91,16 @@ jobs:
     runs-on: ubuntu-latest
     # The security gate: this environment must have required reviewers, so every run
     # (including fork PRs) pauses until an authorized reviewer approves it — with a
-    # per-run audit trail, independent of who applied the `run-msbench` label.
+    # per-run audit trail, independent of who applied the `run-skill-eval` label.
     environment: msbench-eval
-    # Run when dispatched manually, or when a PR carries the `run-msbench` label. The
+    # Run when dispatched manually, or when a PR carries the `run-skill-eval` label. The
     # labels-array check (not github.event.label) covers BOTH the `labeled` event and
     # `synchronize` pushes on an already-labeled PR, so the eval re-runs on new commits.
     # This only gates job creation; the `msbench-eval` environment enforces approval.
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'pull_request_target' &&
-       contains(github.event.pull_request.labels.*.name, 'run-msbench'))
+       contains(github.event.pull_request.labels.*.name, 'run-skill-eval'))
     # Generous cap; doubled to allow the optional skill-off baseline pass.
     timeout-minutes: 120
 
