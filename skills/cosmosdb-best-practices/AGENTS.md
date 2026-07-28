@@ -7385,8 +7385,7 @@ Reference: [Azure Cosmos DB Python SDK](https://learn.microsoft.com/en-us/azure/
 In the Python `azure-cosmos` v4 SDK, all `CosmosClient` configuration is passed as
 keyword arguments directly to the constructor — timeouts, retries, preferred
 regions, TLS verification, diagnostics, and more. Internally the client maps those
-kwargs onto a `ConnectionPolicy` via its own `_build_connection_policy()` helper, so
-you never construct that object yourself.
+kwargs onto a `ConnectionPolicy` for you, so you never construct that object yourself.
 
 Hand-building an `azure.cosmos.documents.ConnectionPolicy` and mutating its
 attributes (`RequestTimeout`, `PreferredLocations`, `DisableSSLVerification`, ...)
@@ -7424,17 +7423,21 @@ client = CosmosClient(
 from azure.cosmos import CosmosClient
 
 # The documented v4 surface. The SDK maps these kwargs onto its internal
-# ConnectionPolicy for you via _build_connection_policy().
+# ConnectionPolicy for you.
 client = CosmosClient(
     url,
     credential=key,
     connection_timeout=10,               # seconds (NOT the ms-based legacy request_timeout)
     preferred_locations=["West US 2", "East US 2"],
     retry_total=9,                       # azure-core throttle/retry, replaces RetryOptions
-    connection_verify=False,             # emulator self-signed cert; True in production
+    connection_verify=True,              # keep TLS verification on in production
     enable_diagnostics_logging=True,
 )
 ```
+
+Only set `connection_verify=False` for the local emulator's self-signed
+certificate — never against a real account. See the `sdk-emulator-ssl` rule for the
+full emulator configuration.
 
 Best practices:
 - Prefer `connection_timeout=<seconds>` over the legacy `request_timeout=<ms>` kwarg.
