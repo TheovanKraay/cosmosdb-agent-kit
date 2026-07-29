@@ -22,7 +22,7 @@ When performing a code review, apply these checks for the cosmosdb-agent-kit rep
 - Filename: `{prefix}-{description}.md` (model-, partition-, query-, sdk-, index-, throughput-, global-, monitoring-, pattern-, tooling-, vector-)
 
 **Build**:
-- Rules changed → AGENTS.md must be regenerated (`npm run build`)
+- `AGENTS.md` is generated on demand (`npm run build`) and is not committed; do not require it in rule PRs
 
 **Eval tasks** (`evals/**/*.yaml`):
 - Required fields: `id`, `name`, `description`, `tags`, `inputs.prompt`, `expected.outcomes`
@@ -47,6 +47,20 @@ Rules in this repo are created by the automated evaluation loop (LLM reviews tes
 - 🔴 Presents a scenario-specific workaround as a universal rule (e.g., "always do X" when X only applies to the exact test that failed)
 - 🟡 Rule has no Reference link to official Microsoft documentation — high hallucination risk
 - 🟡 Rule's Incorrect/Correct examples look synthetic rather than drawn from real SDK usage patterns
+
+## Duplication — compare against ALL existing rules (🔴 Blocking for true duplicates)
+
+New rules must not restate or contradict guidance an existing rule already covers. Do not
+rely on the PR diff or memory — enumerate the existing rules and compare guidance, not titles:
+
+- Read the rule files under `skills/<skill>/rules/` and the index in `skills/<skill>/SKILL.md`.
+  Check all rules sharing the new rule's prefix, and scan the other prefixes for overlapping guidance.
+- 🔴 Block if the core recommendation already exists in another rule — ask the author to extend
+  the existing rule instead of adding a duplicate.
+- 🔴 Block if the new rule contradicts an existing rule, until reconciled.
+- 🟡 Recommend consolidation or cross-referencing for partial overlap.
+- Always name the specific existing rule files you compared against; "no duplicates" without a
+  list is not an acceptable review.
 
 ## Recommendations (🟡)
 

@@ -3,8 +3,11 @@ node_modules/
 *.log
 __pycache__/
 
-# Waza eval results and cache
-.waza-cache/
+# Compiled skill monolith is generated on demand (release CI + benchmarking), not committed
+skills/*/AGENTS.md
+
+# Vally eval results and cache
+.vally-cache/
 results/
 
 # Testing iteration extracted source (keep only zips)
@@ -12,3 +15,5 @@ testing/scenarios/**/iterations/**/ecommerce-order-api/
 testing/scenarios/**/iterations/**/target/
 # Rust build artifacts
 testing-v2/scenarios/**/iterations/**/target/
+# Local build artifact: skills staged into the benchmark build context
+benchmarks/cosmos-sdk-skills/.cosmosdb-best-practices-skills/

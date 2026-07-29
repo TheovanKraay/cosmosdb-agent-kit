@@ -9,7 +9,22 @@ A collection of skills for AI coding agents working with Azure Cosmos DB. Skills
 
 ![agent-kit-cosmosdb (1)](https://github.com/user-attachments/assets/0a2c2e5f-62ee-4741-adda-9af790980761)
 
-Skills follow the [Agent Skills](https://agentskills.io/) format and the kit ships with plugin manifests for **Claude Code**, **Codex**, **Cursor**, **Gemini CLI**, and **GitHub Copilot**.
+Skills follow the [Agent Skills](https://agentskills.io/) format and the kit ships with plugin manifests for **Claude Code**, **Codex**, **Cursor**, **Gemini CLI**, **Kimi Code**, and **GitHub Copilot**.
+
+## Where this works best
+
+This agent kit is designed for **progressive (on-demand) skill delivery**: hosts that load a relevant skill only when it is needed, rather than injecting the entire skill set into every prompt. For the best results:
+
+- **Recommended:** Agent hosts that support progressive or on-demand skill loading (for example, GitHub Copilot in VS Code), **or** models with a large context window (roughly **200K+ tokens**).
+- **Use with caution:** Hosts that inject the **entire** skill set as always-on context (some IDE agents and CLI tools) **combined with** models that have a smaller usable prompt budget (roughly **128K tokens or less**). In this configuration the full skill payload can consume, or overflow, the context window, which degrades output quality or causes the agent to stop making progress.
+
+**If you are in a constrained setup** (always-on injection plus a smaller-context model), prefer one of the following:
+
+- Load a **single, focused skill** for the task at hand instead of the full set, or
+- Switch to a **larger-context model**, or
+- Use a host that supports **on-demand skill discovery**.
+
+> These recommendations are based on internal skill-efficacy testing across multiple models and delivery mechanisms. Exact context limits vary by model and host.
 
 ## Available Skills
 
@@ -51,7 +66,7 @@ Azure Cosmos DB performance optimization guidelines containing 111 rules across 
 apm install AzureCosmosDB/cosmosdb-agent-kit
 ```
 
-Installs the skill across GitHub Copilot, Claude Code, Cursor, Codex, and Gemini in one command.
+Installs the skill across GitHub Copilot, Claude Code, Cursor, Codex, Gemini, and Kimi Code in one command.
 
 ### Universal one-liner (all agents)
 
@@ -80,16 +95,44 @@ This drops the skill catalog into whichever agent you're using.
 gemini extensions install https://github.com/AzureCosmosDB/cosmosdb-agent-kit
 ```
 
+### Kimi Code CLI
+
+Install directly from GitHub (recommended):
+
+```
+/plugins install https://github.com/AzureCosmosDB/cosmosdb-agent-kit
+/reload
+```
+
+Or add the custom marketplace catalog, then install from the plugin manager (`/plugins`):
+
+```
+/plugins marketplace https://raw.githubusercontent.com/AzureCosmosDB/cosmosdb-agent-kit/main/kimi-marketplace.json
+```
+
+The plugin manifest lives at `.kimi-plugin/plugin.json` and the catalog at `kimi-marketplace.json`.
+
+### OpenAI Codex CLI
+
+Add the repo marketplace, then install from the Plugins Directory in the ChatGPT desktop app:
+
+```
+codex plugin marketplace add AzureCosmosDB/cosmosdb-agent-kit
+```
+
+The plugin manifest lives at `.codex-plugin/plugin.json` and the marketplace catalog at `.agents/plugins/marketplace.json` (Codex also reads the legacy `.claude-plugin/marketplace.json`).
+
 ### Per-agent plugin directories
 
 The repository includes ready-made plugin manifests:
 
 | Agent | Manifest |
 |-------|----------|
-| Claude Code | `.claude-plugin/plugin.json` |
-| OpenAI Codex | `.codex-plugin/plugin.json` |
+| Claude Code | `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` |
+| OpenAI Codex | `.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json` |
 | Cursor | `.cursor-plugin/plugin.json` |
 | Gemini CLI | `gemini-extension.json` + `GEMINI.md` |
+| Kimi Code | `.kimi-plugin/plugin.json` |
 | GitHub Copilot | `skills/cosmosdb-best-practices/SKILL.md` (auto-detected) |
 
 ## Website
@@ -136,14 +179,13 @@ Optimize this Cosmos DB query
 ## Skill Structure
 
 Each skill contains:
-- `SKILL.md` - Instructions for the agent (triggers activation)
-- `AGENTS.md` - Compiled rules (what agents read)
+- `SKILL.md` - Instructions and index for the agent (what agents read; links to rules)
 - `rules/` - Individual rule files
 - `metadata.json` - Version and metadata
 
 ## Compatibility
 
-Works with Claude Code, Codex, Cursor, Gemini CLI, GitHub Copilot, and other Agent Skills-compatible tools.
+Works with Claude Code, Codex, Cursor, Gemini CLI, Kimi Code, GitHub Copilot, and other Agent Skills-compatible tools.
 
 ## Contributing
 
@@ -151,18 +193,16 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Evaluation (Local Only)
 
-This project includes a [Waza](https://github.com/microsoft/waza) eval framework for local skill testing. Evals are not enforced in CI today (the mock executor cannot validate response content), but you can run them locally to sanity-check your changes:
+This project includes a [Vally](https://github.com/microsoft/vally) eval framework for local skill testing. Evals are not enforced in CI today (the mock executor cannot validate response content), but you can run them locally to sanity-check your changes:
 
 ```bash
-# Install waza (one-time)
-irm https://raw.githubusercontent.com/microsoft/waza/main/install.ps1 | iex   # Windows
-curl -fsSL https://raw.githubusercontent.com/microsoft/waza/main/install.sh | bash  # macOS/Linux
+# Install Vally by following the instructions at https://github.com/microsoft/vally
 
 # Run evaluations
-waza run evals/cosmosdb-best-practices/eval.yaml -v
+vally run evals/cosmosdb-best-practices/eval.yaml -v
 
 # Check skill readiness
-waza check skills/cosmosdb-best-practices
+vally check skills/cosmosdb-best-practices
 ```
 
 **Looking for a way to help?** Check out our [good first issues](https://github.com/AzureCosmosDB/cosmosdb-agent-kit/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) or browse the [Discussions](https://github.com/AzureCosmosDB/cosmosdb-agent-kit/discussions) board to share ideas.
@@ -180,23 +220,21 @@ Thanks to everyone who has contributed rules, fixes, and ideas!
 
 Contributions of any kind welcome! See the [contributing guide](CONTRIBUTING.md) to get started.
 
-## Evaluation with Waza
+## Evaluation with Vally
 
-This project uses [Waza](https://github.com/microsoft/waza) to evaluate skill quality — testing that the agent produces correct Cosmos DB guidance across data modeling, partitioning, queries, SDK usage, and throughput scenarios.
+This project uses [Vally](https://github.com/microsoft/vally) to evaluate skill quality, testing that the agent produces correct Cosmos DB guidance across data modeling, partitioning, queries, SDK usage, and throughput scenarios.
 
 ```bash
-# Install waza
-irm https://raw.githubusercontent.com/microsoft/waza/main/install.ps1 | iex  # Windows
-curl -fsSL https://raw.githubusercontent.com/microsoft/waza/main/install.sh | bash  # macOS/Linux
+# Install Vally by following the instructions at https://github.com/microsoft/vally
 
 # Run evaluations (mock executor, no API key needed)
-waza run evals/cosmosdb-best-practices/eval.yaml -v
+vally run evals/cosmosdb-best-practices/eval.yaml -v
 
 # Check skill readiness
-waza check skills/cosmosdb-best-practices
+vally check skills/cosmosdb-best-practices
 
 # Run with a real model (requires Copilot auth)
-waza run evals/cosmosdb-best-practices/eval.yaml --executor copilot-sdk --model claude-sonnet-4.6
+vally run evals/cosmosdb-best-practices/eval.yaml --executor copilot-sdk --model claude-sonnet-4.6
 ```
 
 ## Changelog
