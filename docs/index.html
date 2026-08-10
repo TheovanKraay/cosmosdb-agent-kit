@@ -273,7 +273,7 @@ npm run build</code></pre>
           <p class="section-sub">Execution-graded on Microsoft Bench: a live-account AI Chat + RAG build (Python / FastAPI) scored by hidden integration tests over roughly 100 attempts per model. <code>reward</code> is the fraction of checks passed, measured without any skill injected.</p>
         </div>
         <div class="rec-table-wrap stagger-item">
-          <table class="rec-table">
+          <table class="rec-table" aria-label="Model recommendation tiers and benchmark reward ranges">
             <thead>
               <tr>
                 <th>Tier</th>
@@ -311,7 +311,7 @@ npm run build</code></pre>
           </article>
           <article class="card stagger-item">
             <h3>Deliver on demand</h3>
-            <p>Always-on injection can hurt: the full skill set (~500&nbsp;KB) overflowed and scored 0 on models with ~130K usable prompt or less, and a multi-file always-on variant cut quality on strong large-context models too (Opus 4.8 and GPT-5.2 each dropped ~0.3). Progressive delivery avoided both, matching no-skill quality at ~5&ndash;13&times; fewer input tokens.</p>
+            <p>Always-on injection can hurt: the full skill set (~500&nbsp;KB) overflowed and scored 0 on models with a usable prompt budget of ~130K tokens or less, and a multi-file always-on variant cut quality on strong large-context models too (Opus 4.8 and GPT-5.2 each dropped ~0.3). Progressive delivery avoided both, matching no-skill quality while using ~5&ndash;13&times; fewer input tokens than always-on injection.</p>
           </article>
           <article class="card stagger-item">
             <h3>Scope</h3>

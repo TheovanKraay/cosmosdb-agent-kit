@@ -43,7 +43,7 @@ We evaluate agent builds on Azure Cosmos DB with an **execution-graded** benchma
 The same testing measured *how* the skill is delivered, and this is where the results are strongest:
 
 - **Always-on injection can hurt — including the strongest models.** Injecting the **entire** skill set as always-on context (~500&nbsp;KB) **overflowed the context window and scored 0** on every model whose usable prompt budget is roughly **130K tokens or less**. And a multi-file always-on variant **significantly reduced quality on large-context, capable models too** (for example Claude Opus 4.8 and GPT-5.2 both dropped by roughly **0.3**). In other words, forcing the full skill payload into every prompt is counter-productive.
-- **Progressive / on-demand delivery is the safe mode.** It avoided both failure modes — no overflow, no regression on strong models — while **matching no-skill quality at roughly 5–13× fewer input tokens**.
+- **Progressive / on-demand delivery is the safe mode.** It avoided both failure modes — no overflow, no regression on strong models — and **matched no-skill quality**. It also costs **roughly 5–13× fewer input tokens than always-on injection** (progressive sends about as many tokens as a no-skill run, because it loads a skill only when needed; always-on re-sends the full payload on every call).
 
 So the combined recommendation is simple: **use a Recommended-tier model *and* deliver skills on demand.** This is exactly what the kit is designed for (see [Where this works best](#where-this-works-best)).
 
@@ -52,7 +52,7 @@ So the combined recommendation is simple: **use a Recommended-tier model *and* d
 ### Scope & caveats
 
 - Results come from a single build scenario (AI Chat + RAG), a single language (Python), and a single agent host, graded by hidden integration tests over ~100 attempts per model per configuration.
-- Model names reflect the versions exposed by the evaluation harness at test time (mid-2026); the **capability tiers generalize by model family**, but exact scores will shift as models evolve.
+- These tiers are **directional and specific to this evaluation** (one scenario, one language, one host). Model names reflect the versions exposed by the evaluation harness at test time (mid-2026); exact scores will shift as models evolve and may not transfer to other tasks.
 - On this well-specified task, Recommended-tier models already score well **without** the skill; the kit's role is to encode Cosmos DB-specific best practices and steer agents away from common anti-patterns. Testing is being extended to under-specified prompts and additional scenarios.
 
 ## Available Skills
