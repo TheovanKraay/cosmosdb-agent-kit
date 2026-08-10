@@ -26,6 +26,35 @@ This agent kit is designed for **progressive (on-demand) skill delivery**: hosts
 
 > These recommendations are based on internal skill-efficacy testing across multiple models and delivery mechanisms. Exact context limits vary by model and host.
 
+## Recommended models
+
+We evaluate agent builds on Azure Cosmos DB with an **execution-graded** benchmark on Microsoft Bench: a realistic *AI Chat with RAG* task (Python / FastAPI) built against a **live** Azure Cosmos DB account (Entra ID, no keys) and scored by hidden integration tests. `reward` is the fraction of checks passed, averaged over roughly **100 independent attempts per model**. Based on this, for building non-trivial Cosmos DB applications we recommend:
+
+| Tier | Models (as tested) | Avg reward | Guidance |
+|------|--------------------|-----------|----------|
+| **Recommended** | GPT-5.4, Claude Opus 4.8 | 0.79 – 0.82 | Strongest Cosmos DB build quality; the best default choice. |
+| **Capable** | Claude Sonnet 4.5, Claude Opus 4.5, GPT-5.2, Claude Sonnet 4.6 | 0.59 – 0.68 | Solid results; pair with the kit and a clear specification. |
+| **Best for simpler tasks** | Claude Haiku 4.5, GPT-4.1 | 0.11 – 0.15 | Fine for individual operations; struggle with full application builds regardless of how skills are delivered. |
+
+**How to read this:** the ranking reflects intrinsic model capability on Cosmos DB build tasks, measured *without* any skill injected. Model capability is the dominant factor in outcome quality — **choose a Recommended-tier model first**, then apply the kit.
+
+### Delivery mechanism matters as much as the model
+
+The same testing measured *how* the skill is delivered, and this is where the results are strongest:
+
+- **Always-on injection can hurt — including the strongest models.** Injecting the **entire** skill set as always-on context (~500&nbsp;KB) **overflowed the context window and scored 0** on every model whose usable prompt budget is roughly **130K tokens or less**. And a multi-file always-on variant **significantly reduced quality on large-context, capable models too** (for example Claude Opus 4.8 and GPT-5.2 both dropped by roughly **0.3**). In other words, forcing the full skill payload into every prompt is counter-productive.
+- **Progressive / on-demand delivery is the safe mode.** It avoided both failure modes — no overflow, no regression on strong models — and **matched no-skill quality**. It also costs **roughly 5–13× fewer input tokens than always-on injection** (progressive sends about as many tokens as a no-skill run, because it loads a skill only when needed; always-on re-sends the full payload on every call).
+
+So the combined recommendation is simple: **use a Recommended-tier model *and* deliver skills on demand.** This is exactly what the kit is designed for (see [Where this works best](#where-this-works-best)).
+
+> On this well-specified build task, progressive delivery *matches* a no-skill baseline rather than beating it — the strong models already know a lot. The measurable win today is avoiding the harm of always-on injection at a fraction of the token cost; benefits on *under-specified* prompts and additional scenarios are still being measured.
+
+### Scope & caveats
+
+- Results come from a single build scenario (AI Chat + RAG), a single language (Python), and a single agent host, graded by hidden integration tests over ~100 attempts per model per configuration.
+- These tiers are **directional and specific to this evaluation** (one scenario, one language, one host). Model names reflect the versions exposed by the evaluation harness at test time (mid-2026); exact scores will shift as models evolve and may not transfer to other tasks.
+- On this well-specified task, Recommended-tier models already score well **without** the skill; the kit's role is to encode Cosmos DB-specific best practices and steer agents away from common anti-patterns. Testing is being extended to under-specified prompts and additional scenarios.
+
 ## Available Skills
 
 | Skill | Description | Status |
