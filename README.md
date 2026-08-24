@@ -9,7 +9,7 @@ A collection of skills for AI coding agents working with Azure Cosmos DB. Skills
 
 ![agent-kit-cosmosdb (1)](https://github.com/user-attachments/assets/0a2c2e5f-62ee-4741-adda-9af790980761)
 
-Skills follow the [Agent Skills](https://agentskills.io/) format and the kit ships with plugin manifests for **Claude Code**, **Codex**, **Cursor**, **Gemini CLI**, **Kimi Code**, and **GitHub Copilot**.
+Skills follow the [Agent Skills](https://agentskills.io/) format and the kit ships with plugin manifests for **Claude Code**, **Codex**, **Cursor**, **Gemini CLI**, **Grok Build**, **Kimi Code**, and **GitHub Copilot**.
 
 ## Where this works best
 
@@ -124,6 +124,20 @@ This drops the skill catalog into whichever agent you're using.
 gemini extensions install https://github.com/AzureCosmosDB/cosmosdb-agent-kit
 ```
 
+### Grok Build
+
+Add the Agent Kit marketplace, install the plugin, then verify that Grok discovered its skills:
+
+```bash
+grok plugin marketplace add AzureCosmosDB/cosmosdb-agent-kit
+grok plugin install cosmosdb --trust
+grok inspect
+```
+
+The marketplace catalog lives at `.grok-plugin/marketplace.json`, and the plugin uses the root
+`plugin.json` manifest. Only install trusted plugin sources; Grok requires `--trust` before
+activating a remote plugin's skills and MCP servers.
+
 ### Kimi Code CLI
 
 Install directly from GitHub (recommended):
@@ -161,6 +175,7 @@ The repository includes ready-made plugin manifests:
 | OpenAI Codex | `.codex-plugin/plugin.json` + `.agents/plugins/marketplace.json` |
 | Cursor | `.cursor-plugin/plugin.json` |
 | Gemini CLI | `gemini-extension.json` + `GEMINI.md` |
+| Grok Build | `.grok-plugin/marketplace.json` + `plugin.json` |
 | Kimi Code | `.kimi-plugin/plugin.json` |
 | GitHub Copilot | `skills/cosmosdb-best-practices/SKILL.md` (auto-detected) |
 
@@ -214,7 +229,7 @@ Each skill contains:
 
 ## Compatibility
 
-Works with Claude Code, Codex, Cursor, Gemini CLI, Kimi Code, GitHub Copilot, and other Agent Skills-compatible tools.
+Works with Claude Code, Codex, Cursor, Gemini CLI, Grok Build, Kimi Code, GitHub Copilot, and other Agent Skills-compatible tools.
 
 ## Contributing
 
